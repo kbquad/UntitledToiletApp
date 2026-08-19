@@ -1,0 +1,19 @@
+{
+  "name": "Loo — Calgary washroom finder",
+  "short_name": "Loo",
+  "description": "Find a clean public washroom near you in Calgary.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F9EDF2",
+  "theme_color": "#8E5B75",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

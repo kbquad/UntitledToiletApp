@@ -1,0 +1,139 @@
+rules_version = '2';
+
+// Loo — Firestore security rules.
+//
+// The browser holds the Firebase config in plain sight, so these rules — not
+// the app code — are what actually protect the data. Every visitor gets an
+// anonymous auth account, which gives us request.auth.uid: an id the client
+// cannot forge.
+//
+// Data model:
+//   washrooms/{washroomId}
+//     ├─ aggregate counters live on this doc (reviewCount, ratingSum, cleanVotes)
+//     └─ reviews/{authorUid}          ← doc id IS the author's uid
+//          └─ helpful/{voterUid}      ← doc id IS the voter's uid
+//
+// Keying reviews by uid is what enforces "one review per person per washroom"
+// and makes ownership checkable without reading the document first.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Which top-level fields differ between the stored and incoming doc.
+    function changed() {
+      return incoming().diff(existing()).affectedKeys();
+    }
+
+    match /washrooms/{washroomId} {
+
+      function validLocation(d) {
+        return d.lat is number && d.lat >= -90  && d.lat <= 90
+            && d.lng is number && d.lng >= -180 && d.lng <= 180;
+      }
+
+      function validSubmission(d) {
+        return d.name is string && d.name.size() > 0 && d.name.size() <= 120
+            && d.type is string && d.type.size() <= 40
+            && d.area is string && d.area.size() <= 60
+            && validLocation(d)
+            && d.status == 'pending'                  // never straight onto the map
+            && d.submittedBy == request.auth.uid
+            && d.reviewCount == 0 && d.ratingSum == 0 && d.cleanVotes == 0;
+      }
+
+      // Only the three aggregate counters may move, and only by the amount a
+      // single review can account for. This is the free-tier trade-off: it
+      // bounds what a bad actor can do per write rather than making the maths
+      // unforgeable. Cloud Functions would be needed for that — see SETUP.md.
+      function onlyAggregatesChanged() {
+        return changed().hasOnly(['reviewCount', 'ratingSum', 'cleanVotes'])
+            && incoming().reviewCount is int
+            && incoming().ratingSum is int
+            && incoming().cleanVotes is int
+            && incoming().reviewCount >= 0
+            && incoming().ratingSum >= 0
+            && incoming().cleanVotes >= 0
+            && incoming().reviewCount - existing().reviewCount >= -1
+            && incoming().reviewCount - existing().reviewCount <= 1
+            && incoming().ratingSum - existing().ratingSum >= -5
+            && incoming().ratingSum - existing().ratingSum <= 5
+            && incoming().cleanVotes - existing().cleanVotes >= -1
+            && incoming().cleanVotes - existing().cleanVotes <= 1;
+      }
+
+      // Only published washrooms are visible; submissions wait for approval.
+      allow get, list: if existing().status == 'published';
+
+      allow create: if signedIn() && validSubmission(incoming());
+      allow update: if signedIn() && onlyAggregatesChanged();
+      allow delete: if false;   // moderation happens in the console
+
+      // ── Reviews ────────────────────────────────────────────────────────
+      match /reviews/{authorId} {
+
+        function validReview(d) {
+          return d.rating is int && d.rating >= 1 && d.rating <= 5
+              && d.body is string && d.body.size() <= 600
+              && d.authorName is string && d.authorName.size() > 0 && d.authorName.size() <= 40
+              && d.authorId == authorId
+              && d.washroomId == washroomId          // must match where it lives
+              && d.washroomName is string && d.washroomName.size() <= 120
+              && d.helpfulCount is int && d.helpfulCount >= 0;
+        }
+
+        function isAuthor() {
+          return signedIn() && request.auth.uid == authorId;
+        }
+
+        // Anyone may bump only the helpful tally, by exactly one, either way.
+        function onlyHelpfulCountChanged() {
+          return changed().hasOnly(['helpfulCount'])
+              && incoming().helpfulCount is int
+              && incoming().helpfulCount >= 0
+              && (incoming().helpfulCount - existing().helpfulCount == 1
+               || incoming().helpfulCount - existing().helpfulCount == -1);
+        }
+
+        allow get, list: if true;
+
+        allow create: if isAuthor()
+                      && validReview(incoming())
+                      && incoming().helpfulCount == 0;
+
+        allow update: if (isAuthor()
+                          && validReview(incoming())
+                          && incoming().helpfulCount == existing().helpfulCount)
+                      || (signedIn() && onlyHelpfulCountChanged());
+
+        allow delete: if isAuthor();
+
+        // ── "Found this helpful" votes ───────────────────────────────────
+        match /helpful/{voterId} {
+          allow get, list: if true;
+          allow create, delete: if signedIn() && request.auth.uid == voterId;
+          allow update: if false;
+        }
+      }
+    }
+
+    // The profile screen asks "all reviews written by me" across every
+    // washroom, which is a collection-group query and therefore needs a rule
+    // at this path too. Reviews are public to read either way; writing still
+    // has to go through the nested rules above.
+    match /{path=**}/reviews/{authorId} {
+      allow get, list: if true;
+    }
+
+    // Anything not matched above is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

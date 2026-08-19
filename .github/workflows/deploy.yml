@@ -1,0 +1,112 @@
+name: Deploy
+
+# Authentication is Workload Identity Federation — GitHub mints a short-lived
+# OIDC token that Google exchanges for credentials. There is no service
+# account key stored as a secret anywhere, which is what the
+# iam.disableServiceAccountKeyCreation policy requires.
+#
+# One-time setup, run once by someone with project admin rights:
+#
+#   PROJECT_ID=lootest-dcf59
+#   PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+#   REPO=your-github-org/your-repo
+#
+#   gcloud services enable iamcredentials.googleapis.com --project $PROJECT_ID
+#
+#   gcloud iam workload-identity-pools create github \
+#     --project=$PROJECT_ID --location=global --display-name="GitHub Actions"
+#
+#   gcloud iam workload-identity-pools providers create-oidc github \
+#     --project=$PROJECT_ID --location=global --workload-identity-pool=github \
+#     --display-name="GitHub" \
+#     --issuer-uri="https://token.actions.githubusercontent.com" \
+#     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+#     --attribute-condition="assertion.repository == '${REPO}'"
+#
+#   # A deploy identity with only the roles it needs — no key is ever created.
+#   gcloud iam service-accounts create loo-deployer \
+#     --project=$PROJECT_ID --display-name="Loo CI deployer"
+#
+#   for ROLE in roles/firebasehosting.admin roles/datastore.user roles/firebaserules.admin; do
+#     gcloud projects add-iam-policy-binding $PROJECT_ID \
+#       --member="serviceAccount:loo-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
+#       --role="$ROLE"
+#   done
+#
+#   # Let only this repo impersonate that service account.
+#   gcloud iam service-accounts add-iam-policy-binding \
+#     loo-deployer@$PROJECT_ID.iam.gserviceaccount.com \
+#     --project=$PROJECT_ID --role=roles/iam.workloadIdentityUser \
+#     --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/$REPO"
+#
+# Then set these repository variables (Settings → Secrets and variables →
+# Actions → Variables). They are identifiers, not secrets:
+#   GCP_PROJECT_ID              lootest-dcf59
+#   GCP_WORKLOAD_IDENTITY_PROVIDER
+#     projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github
+#   GCP_SERVICE_ACCOUNT         loo-deployer@lootest-dcf59.iam.gserviceaccount.com
+#
+# The VITE_FIREBASE_* values are baked in at build time; they ship in the
+# browser bundle by design, so repository variables are the right home.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # required for Workload Identity Federation
+
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Check security rules
+        run: |
+          npx firebase emulators:exec \
+            --only firestore,auth \
+            --project demo-loo \
+            "node scripts/test-rules.mjs"
+
+      - name: Build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+        run: npm run build
+
+      # Exchanges the GitHub OIDC token for Google credentials and writes them
+      # to a file, exporting GOOGLE_APPLICATION_CREDENTIALS. Everything after
+      # this — firebase-tools included — picks them up through ADC.
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Deploy rules, indexes and hosting
+        run: |
+          npx firebase deploy \
+            --only firestore:rules,firestore:indexes,hosting \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --non-interactive
