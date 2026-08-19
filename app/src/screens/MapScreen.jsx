@@ -5,6 +5,7 @@ import MapReady from '../components/MapReady';
 import { useStore } from '../store';
 import { useToastStore } from '../toastStore';
 import { useWashroomData, useCurrentLocation } from '../hooks/useWashroomData';
+import { requestLocation } from '../lib/geolocation';
 import { AREAS } from '../data/locations';
 import { pinIcon, youAreHereIcon } from '../utils/mapIcons';
 import { IconSearch, IconFilter, IconPlus, IconTarget } from '../components/Icons';
@@ -25,6 +26,7 @@ export default function MapScreen({ t }) {
   const here = useCurrentLocation();
 
   const [map, setMap] = useState(null);
+  const [recentring, setRecentring] = useState(false);
   const onReady = useCallback((m) => setMap(m), []);
   const flownForState = useRef(false);
 
@@ -39,6 +41,20 @@ export default function MapScreen({ t }) {
   }, [map, routerLocation.state, flash, allDecorated]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length + (minClean ? 1 : 0);
+
+  // Take a fresh reading rather than flying to wherever we last saw them —
+  // "recentre on me" is exactly the moment a stale position is most obvious.
+  const recentre = async () => {
+    if (recentring) return;
+    setRecentring(true);
+    const fix = await requestLocation();
+    setRecentring(false);
+    const target = fix ?? here;
+    map?.flyTo([target.lat, target.lng], 15, { duration: 1 });
+    flash(fix
+      ? 'Centred on where you are now.'
+      : `Couldn’t get a fix — centred on ${here.label}.`);
+  };
 
   return (
     <div className="screen" style={{ background: t.mapWater }}>
@@ -56,7 +72,7 @@ export default function MapScreen({ t }) {
             ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
             : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'}
         />
-        <Marker position={[here.lat, here.lng]} icon={youAreHereIcon(t.ink)} />
+        {here.fromDevice && <Marker position={[here.lat, here.lng]} icon={youAreHereIcon(t.ink)} opacity={here.live ? 1 : 0.45} />}
         {mapPool.map((w) => (
           <Marker
             key={`${w.id}-${dark}-${saved.includes(w.id)}-${w.scoreText}`}
@@ -110,10 +126,10 @@ export default function MapScreen({ t }) {
         <button
           type="button"
           aria-label="Recentre on my location"
-          onClick={() => { map?.flyTo([here.lat, here.lng], 15, { duration: 1 }); flash(`Centred on you — near ${here.label}`); }}
+          onClick={recentre}
           style={{ width: 44, height: 44, borderRadius: 14, background: t.card, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,.14)' }}
         >
-          <IconTarget color={t.ink} />
+          <IconTarget color={recentring ? t.sub : t.ink} />
         </button>
         <button type="button" aria-label="Add a washroom" onClick={() => navigate('/add')} style={{ width: 44, height: 44, borderRadius: 14, background: t.accent, border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
           <IconPlus />

@@ -1,7 +1,10 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { useToastStore } from '../toastStore';
+import { useCurrentLocation } from '../hooks/useWashroomData';
+import { requestLocation } from '../lib/geolocation';
+import { relativeTime } from '../utils/time';
 import { PRESETS, swatch, hueName } from '../theme';
 import { IconBack, IconChevronRight } from '../components/Icons';
 import { Chip, Toggle } from '../components/ui';
@@ -17,8 +20,32 @@ export default function SettingsScreen({ t }) {
   const setUnits = useStore((s) => s.setUnits);
   const notify = useStore((s) => s.notify);
   const toggleNotify = useStore((s) => s.toggleNotify);
+  const locationStatus = useStore((s) => s.locationStatus);
+  const here = useCurrentLocation();
 
+  const [locating, setLocating] = useState(false);
   const dragging = useRef(false);
+
+  // Somewhere to turn location on after skipping it at onboarding, or to
+  // force a fresh fix if the browser has been sitting on an old one.
+  const useMyLocation = async () => {
+    if (locating) return;
+    setLocating(true);
+    const fix = await requestLocation();
+    setLocating(false);
+    flash(fix
+      ? 'Got it — distances are measured from where you are now.'
+      : 'Couldn’t get a location. Check that this site is allowed to use it.');
+  };
+
+  const locationLine = () => {
+    if (locating) return 'Finding you…';
+    if (locationStatus === 'denied') return 'Blocked for this site — allow it in your browser settings';
+    if (locationStatus === 'unavailable') return 'Your browser couldn’t provide a position';
+    if (!here.fromDevice) return 'Off — distances are measured from downtown Calgary';
+    if (here.live) return `Following you${here.at ? ` · updated ${relativeTime(here.at).toLowerCase()}` : ''}`;
+    return `Last fix ${relativeTime(here.at).toLowerCase()} — tap to refresh`;
+  };
 
   const hueFromEvent = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -108,11 +135,18 @@ export default function SettingsScreen({ t }) {
             </span>
             <Toggle on={notify} onClick={() => { toggleNotify(); flash(notify ? 'Saved-washroom alerts off.' : 'We’ll tell you when a saved washroom gets new reviews.'); }} t={t} />
           </div>
+          <button type="button" onClick={useMyLocation} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, borderBottom: `1px solid ${t.line}`, background: 'transparent', cursor: locating ? 'progress' : 'pointer', textAlign: 'left' }}>
+            <span style={{ display: 'block' }}>
+              <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>Use my location</span>
+              <span style={{ display: 'block', fontSize: 10.5, color: t.sub, marginTop: 3 }}>{locationLine()}</span>
+            </span>
+            <IconChevronRight color={t.sub} />
+          </button>
           <button type="button" onClick={() => navigate('/onboarding')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, borderBottom: `1px solid ${t.line}`, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
             <span style={{ fontSize: 12.5, color: t.text }}>Replay the intro</span>
             <IconChevronRight color={t.sub} />
           </button>
-          <button type="button" onClick={() => flash('Your location is only used on-device to sort what’s nearby.')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+          <button type="button" onClick={() => flash('Your location is only used on-device to sort what’s nearby. It is never sent anywhere.')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
             <span style={{ display: 'block' }}>
               <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>Privacy and location</span>
               <span style={{ display: 'block', fontSize: 10.5, color: t.sub, marginTop: 3 }}>Location stays on your device</span>

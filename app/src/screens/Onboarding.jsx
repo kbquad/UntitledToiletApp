@@ -1,26 +1,28 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { useToastStore } from '../toastStore';
+import { requestLocation } from '../lib/geolocation';
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const setOnboarded = useStore((s) => s.setOnboarded);
-  const setUserLocation = useStore((s) => s.setUserLocation);
   const flash = useToastStore((s) => s.flash);
+  const [locating, setLocating] = useState(false);
 
   const finish = () => { setOnboarded(true); navigate('/'); };
 
-  const allowLocation = () => {
-    if (!navigator.geolocation) { finish(); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        finish();
-        flash('Location on. Sorting by what’s closest to you.');
-      },
-      () => { finish(); },
-      { timeout: 6000 },
-    );
+  // This grants permission; keeping the position up to date afterwards is the
+  // app-wide watcher's job, not something captured once here.
+  const allowLocation = async () => {
+    if (locating) return;
+    setLocating(true);
+    const fix = await requestLocation();
+    setLocating(false);
+    finish();
+    flash(fix
+      ? 'Location on. Sorting by what’s closest to you.'
+      : 'Couldn’t get your location — showing Calgary. You can turn it on in Settings.');
   };
 
   return (
@@ -46,10 +48,10 @@ export default function Onboarding() {
         <div style={{ fontSize: 31, fontWeight: 600, letterSpacing: '-.04em', lineHeight: 1.1 }}>A clean washroom, wherever you are.</div>
         <div style={{ fontSize: 13.5, lineHeight: 1.6, opacity: 0.82 }}>Loo shows the public washrooms around you in Calgary, how far they are, and what other people said about how clean they were.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-          <button type="button" onClick={allowLocation} style={{ height: 52, borderRadius: 16, border: 0, background: '#FFF4F8', color: '#8E5B75', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Use my location</button>
+          <button type="button" onClick={allowLocation} disabled={locating} style={{ height: 52, borderRadius: 16, border: 0, background: '#FFF4F8', color: '#8E5B75', fontSize: 14, fontWeight: 600, cursor: locating ? 'progress' : 'pointer', opacity: locating ? 0.75 : 1 }}>{locating ? 'Finding you…' : 'Use my location'}</button>
           <button type="button" onClick={finish} style={{ height: 48, borderRadius: 16, border: '1px solid rgba(255,244,248,.3)', background: 'transparent', color: '#FFF4F8', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Browse Calgary instead</button>
         </div>
-        <div style={{ fontSize: 11, lineHeight: 1.55, opacity: 0.6, textAlign: 'center', marginTop: 2 }}>Your location stays on your device. We only use it to sort what’s nearby.</div>
+        <div style={{ fontSize: 11, lineHeight: 1.55, opacity: 0.6, textAlign: 'center', marginTop: 2 }}>Your location stays on your device. We only use it to sort what’s nearby, and it updates as you move.</div>
       </div>
     </div>
   );

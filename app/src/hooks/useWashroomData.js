@@ -1,18 +1,46 @@
 import { useEffect, useMemo } from 'react';
-import { useStore } from '../store';
+import { useStore, LOCATION_FRESH_MS } from '../store';
 import { useDataStore } from '../dataStore';
 import { FALLBACK_LOCATION } from '../data/locations';
 import { decorateWashroom } from '../utils/decorate';
 import { distanceMetres } from '../utils/geo';
 import { isOpenNow } from '../utils/hours';
 
+// The one place that answers "where are we measuring from?". It also says how
+// much that answer is worth: a position from the device that arrived seconds
+// ago is not the same thing as one left over from yesterday's session, and
+// screens that pin data to a coordinate (Add a washroom) need to tell them
+// apart.
 export const useCurrentLocation = () => {
   const userLocation = useStore((s) => s.userLocation);
-  return useMemo(() => (
-    userLocation
-      ? { lat: userLocation.lat, lng: userLocation.lng, label: 'your current location' }
-      : { lat: FALLBACK_LOCATION.lat, lng: FALLBACK_LOCATION.lng, label: FALLBACK_LOCATION.label }
-  ), [userLocation]);
+  const locationStatus = useStore((s) => s.locationStatus);
+
+  return useMemo(() => {
+    if (!userLocation) {
+      return {
+        lat: FALLBACK_LOCATION.lat,
+        lng: FALLBACK_LOCATION.lng,
+        label: FALLBACK_LOCATION.label,
+        accuracy: null,
+        at: null,
+        fromDevice: false,
+        live: false,
+      };
+    }
+
+    const at = userLocation.at ?? 0;
+    const live = locationStatus !== 'denied' && Date.now() - at <= LOCATION_FRESH_MS;
+
+    return {
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      label: live ? 'your current location' : 'where you last were',
+      accuracy: userLocation.accuracy ?? null,
+      at: at || null,
+      fromDevice: true,
+      live,
+    };
+  }, [userLocation, locationStatus]);
 };
 
 const featureOk = (w, filters, minClean) => {

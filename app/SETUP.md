@@ -257,6 +257,21 @@ totals on each review write), which requires the **Blaze** pay-as-you-go plan.
 For a community app this is a reasonable trade; if it ever matters, that's the
 upgrade path.
 
+The same goes for the human check on the review and "add a washroom" forms.
+The question is generated and graded in the browser (`src/lib/captcha.js`),
+alongside a honeypot field and a minimum answering time — enough to stop
+ordinary form spam that posts blind, and nothing a script written against this
+specific app couldn't get past. Firestore has no way to know whether it was
+answered.
+
+The server-side counterpart is **App Check**: register the site with
+reCAPTCHA Enterprise in Firebase console → App Check, call
+`initializeAppCheck()` next to `initializeApp()` in `src/lib/firebase.js`, and
+turn on enforcement for Firestore. Every write then carries a token Google
+verifies before the rules even run. It stays on the free tier at this scale.
+Do that before opening submissions up widely; keep the in-app check as the
+part that gives a person immediate feedback.
+
 ## Troubleshooting
 
 **"Demo mode" banner won't go away** — the `.env` values aren't reaching the

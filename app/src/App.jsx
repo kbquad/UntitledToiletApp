@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useTheme } from './hooks/useTheme';
+import { useLocationWatch } from './hooks/useLocationWatch';
 import { useStore } from './store';
 import { BottomNav } from './components/BottomNav';
 import { Toast } from './components/Toast';
@@ -30,6 +31,10 @@ const RequireOnboarding = ({ children }) => {
 
 function App() {
   const { t } = useTheme();
+
+  // One subscription for the whole app: every screen reads the same position,
+  // and it keeps up with the user instead of being captured once at onboarding.
+  useLocationWatch();
 
   return (
     <div className="phone">

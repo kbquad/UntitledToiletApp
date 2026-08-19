@@ -33,7 +33,9 @@ reviews are shared by everyone.
 - **Leaflet + OpenStreetMap** (CARTO basemap tiles) — no API key needed.
 - **Firebase / Firestore** for shared washrooms, reviews and votes, with
   security rules doing the enforcement — see `firestore.rules`.
-- **Zustand** for per-device preferences in `localStorage`.
+- **Zustand** for per-device preferences in `localStorage`, plus a live
+  `watchPosition` subscription (`src/lib/geolocation.js`) mounted once at the
+  app root.
 - The whole palette derives from one hue via OKLCH, so the colour wheel in
   Settings recolours every surface — including the map — live.
 
@@ -87,8 +89,16 @@ Workload Identity Federation in CI.
   near the landmark; not surveyed.
 - **Opening hours are sample values**, but the logic is real — "Open right now"
   filters against them and the labels update through the day.
-- **Geolocation needs HTTPS** (localhost counts). If denied, distances fall
-  back to a fixed downtown point (Eau Claire).
+- **Geolocation needs HTTPS** (localhost counts). Your position is watched for
+  as long as the app is open, so distances and sorting follow you as you move;
+  if permission is denied they fall back to a fixed downtown point (Eau
+  Claire). "Add a washroom" needs a real, current position — it pins the
+  washroom where you are standing, so it won't submit from the fallback.
+- **The human check on the review and submit forms is client-side**
+  (`src/lib/captcha.js`): a generated question, a honeypot field and a
+  minimum answering time. It stops ordinary form spam, not a script written
+  against this app. Firebase App Check is the server-enforced version — see
+  SETUP.md.
 - **Attribution must stay.** OpenStreetMap and CARTO require the credit line
   under the map.
 - **Submitted washrooms are held for review** (`status: "pending"`) so the map
