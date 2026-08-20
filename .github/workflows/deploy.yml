@@ -71,9 +71,19 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # firebase-admin (used by the seed script) requires >= 22, and
+          # firebase-tools is only tested against current LTS.
+          node-version: 22
           cache: npm
           cache-dependency-path: app/package-lock.json
+
+      # The Firestore emulator is a Java program, and firebase-tools dropped
+      # support for JDKs older than 21. The runner image still defaults to 17,
+      # so pin it here or the rules check dies before it runs a single test.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
       - run: npm ci
 
