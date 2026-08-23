@@ -257,20 +257,56 @@ totals on each review write), which requires the **Blaze** pay-as-you-go plan.
 For a community app this is a reasonable trade; if it ever matters, that's the
 upgrade path.
 
-The same goes for the human check on the review and "add a washroom" forms.
-The question is generated and graded in the browser (`src/lib/captcha.js`),
-alongside a honeypot field and a minimum answering time — enough to stop
-ordinary form spam that posts blind, and nothing a script written against this
-specific app couldn't get past. Firestore has no way to know whether it was
-answered.
+## Spam protection (reCAPTCHA v3 via App Check)
 
-The server-side counterpart is **App Check**: register the site with
-reCAPTCHA Enterprise in Firebase console → App Check, call
-`initializeAppCheck()` next to `initializeApp()` in `src/lib/firebase.js`, and
-turn on enforcement for Firestore. Every write then carries a token Google
-verifies before the rules even run. It stays on the free tier at this scale.
-Do that before opening submissions up widely; keep the in-app check as the
-part that gives a person immediate feedback.
+Reviews and washroom submissions are protected by reCAPTCHA v3, carried by
+Firebase App Check. Nothing to solve: Google scores the visit in the
+background, App Check turns that into a token on every request, and Firestore
+verifies the token before your security rules even run. The code is already
+wired up in `src/lib/firebase.js` — it stays dormant until you do the three
+steps below, so the app runs fine without them.
+
+**1. Create a reCAPTCHA v3 site key** at
+<https://www.google.com/recaptcha/admin/create>:
+
+- Label: anything, e.g. `Loo`
+- Type: **reCAPTCHA v3** (*not* v2 — no checkbox, no image grid)
+- Domains: your hosting domains, one per line —
+  `lootest-dcf59.web.app`, `lootest-dcf59.firebaseapp.com`, and `localhost`
+  for development
+
+You get two keys. The **site key** is public and goes in the app; the
+**secret key** goes to Firebase in the next step and nowhere else.
+
+**2. Register the app in Firebase console → App Check → Apps.** Pick your web
+app, choose **reCAPTCHA v3** as the provider, and paste the *secret* key.
+Leave enforcement off for now.
+
+**3. Set `VITE_RECAPTCHA_SITE_KEY`** to the *site* key — in `app/.env` for
+local work, and as a repository variable for the deploy (Settings → Secrets
+and variables → Actions → Variables). Deploy, then watch App Check → Metrics
+for a few hours: real traffic should show as verified requests.
+
+**4. Only then turn on enforcement** for Cloud Firestore, in App Check →
+APIs. Enforcing before the metrics look right locks out your own users.
+
+Order matters. Enforcement is what makes it real, and it is also what breaks
+the site if the first three steps aren't right, which is why it comes last.
+
+### Developing against an enforced project
+
+Run `npm run dev` and the console prints an App Check debug token. Paste it
+into App Check → your app → ⋮ → **Manage debug tokens** and localhost is let
+through without a real reCAPTCHA score. Tokens are per browser profile — a
+teammate needs their own. Nothing is needed for the emulator, which does not
+check tokens at all.
+
+### What it does and doesn't stop
+
+reCAPTCHA v3 scores how human a visit looks; a bad score means Firestore
+refuses the write. It raises the cost of automated posting a long way. It is
+not a judgement about content — a real person can still post nonsense, which
+is what moderation and `status: "pending"` on new washrooms are for.
 
 ## Troubleshooting
 

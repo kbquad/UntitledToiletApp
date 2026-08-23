@@ -4,11 +4,10 @@ import { useStore } from '../store';
 import { useDataStore } from '../dataStore';
 import { useToastStore } from '../toastStore';
 import { useWashroom, useReviews } from '../hooks/useWashroomData';
-import { useCaptchaStore } from '../captchaStore';
 import { REVIEW_TAGS } from '../data/locations';
 import { IconBack } from '../components/Icons';
 import { Chip } from '../components/ui';
-import { HumanCheck } from '../components/HumanCheck';
+import { ProtectedNote } from '../components/ProtectedNote';
 import { Loading } from '../components/Status';
 
 const WORDS = ['', 'Grim', 'Rough', 'Okay', 'Clean', 'Spotless'];
@@ -20,8 +19,6 @@ export default function ReviewScreen({ t }) {
   const submitReview = useDataStore((s) => s.submitReview);
   const displayName = useStore((s) => s.displayName);
   const setDisplayName = useStore((s) => s.setDisplayName);
-  const passedUntil = useCaptchaStore((s) => s.passedUntil);
-  const stillPassed = useCaptchaStore((s) => s.stillPassed);
 
   const cur = useWashroom(id);
   const { reviews, loading } = useReviews(id);
@@ -46,20 +43,12 @@ export default function ReviewScreen({ t }) {
     setLoaded(true);
   }, [loading, loaded, mine]);
 
-  const human = passedUntil > Date.now();
-
   if (!cur || loading) return <div className="screen" style={{ background: t.bg }}><Loading t={t} /></div>;
 
   const toggleTag = (tag) => setPickedTags((p) => (p.includes(tag) ? p.filter((x) => x !== tag) : [...p, tag]));
 
   const submit = async () => {
     if (rating === 0 || saving) return;
-    // Re-checked here rather than trusting the disabled button: a pass can
-    // expire while the review is being written.
-    if (!stillPassed()) {
-      flash('Answer the quick human check, then post.');
-      return;
-    }
     setSaving(true);
     const tagLine = pickedTags.length ? `${pickedTags.join(' · ')}.` : '';
     const body = [text.trim(), tagLine].filter(Boolean).join(' ');
@@ -150,30 +139,29 @@ export default function ReviewScreen({ t }) {
           )}
         </div>
 
-        <HumanCheck t={t} note="Reviews are public, so we ask this before posting." />
-
         <button
           type="button"
           onClick={submit}
-          disabled={rating === 0 || saving || !human}
+          disabled={rating === 0 || saving}
           style={{
             height: 50, borderRadius: 15, border: 0,
-            background: rating === 0 || !human ? t.trackBg : t.accent,
-            color: rating === 0 || !human ? t.sub : '#FFFFFF',
+            background: rating === 0 ? t.trackBg : t.accent,
+            color: rating === 0 ? t.sub : '#FFFFFF',
             fontSize: 13.5, fontWeight: 600,
-            cursor: rating === 0 || saving || !human ? 'not-allowed' : 'pointer',
+            cursor: rating === 0 || saving ? 'not-allowed' : 'pointer',
             opacity: saving ? 0.7 : 1,
           }}
         >
           {saving ? 'Posting…'
             : rating === 0 ? 'Pick a rating to post'
-              : !human ? 'Answer the check to post'
-                : mine ? 'Update review' : 'Post review'}
+              : mine ? 'Update review' : 'Post review'}
         </button>
 
         <div style={{ fontSize: 11, lineHeight: 1.55, color: t.sub, textAlign: 'center' }}>
           Your review is public and helps the next person. You can edit it later.
         </div>
+
+        <ProtectedNote t={t} style={{ marginTop: -6 }} />
       </div>
     </div>
   );

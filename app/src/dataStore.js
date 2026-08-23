@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as db from './lib/db';
+import { isProtected } from './lib/firebase';
 
 // Shared, server-backed content: washrooms, their scores, and reviews.
 // Personal preferences (theme, units, saved list) live in store.js instead.
@@ -96,8 +97,24 @@ export const useDataStore = create((set, get) => ({
 
 function describe(e) {
   const message = e?.message ?? String(e);
+  const code = e?.code ?? '';
+
   if (/Failed to fetch|NetworkError/i.test(message)) {
     return 'Can’t reach the database. Check your connection and that the Supabase project is running.';
   }
+
+  // reCAPTCHA itself couldn't run — usually an ad blocker, a privacy extension
+  // or a network that blocks Google. Worth naming, because "permission denied"
+  // sends people looking in entirely the wrong place.
+  if (String(code).startsWith('appCheck/') || /app.?check|recaptcha/i.test(message)) {
+    return 'The spam check couldn’t run in this browser. Turn off any content blocker for this site, then try again.';
+  }
+
+  // App Check rejections reach Firestore as plain permission-denied, so this
+  // has to cover both that and an ordinary rules refusal without guessing.
+  if (code === 'permission-denied' && isProtected) {
+    return 'That post was refused. If you’re using a content blocker or a VPN, the spam check may have failed — reload and try again.';
+  }
+
   return message;
 }

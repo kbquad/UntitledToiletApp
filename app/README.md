@@ -94,11 +94,11 @@ Workload Identity Federation in CI.
   if permission is denied they fall back to a fixed downtown point (Eau
   Claire). "Add a washroom" needs a real, current position — it pins the
   washroom where you are standing, so it won't submit from the fallback.
-- **The human check on the review and submit forms is client-side**
-  (`src/lib/captcha.js`): a generated question, a honeypot field and a
-  minimum answering time. It stops ordinary form spam, not a script written
-  against this app. Firebase App Check is the server-enforced version — see
-  SETUP.md.
+- **Posting is protected by reCAPTCHA v3**, carried by Firebase App Check
+  (`src/lib/firebase.js`). It is invisible — nothing to solve — and Google
+  verifies the token before Firestore accepts the write. Needs
+  `VITE_RECAPTCHA_SITE_KEY` plus enforcement turned on in the console; without
+  either, the app runs unprotected. See SETUP.md.
 - **Attribution must stay.** OpenStreetMap and CARTO require the credit line
   under the map.
 - **Submitted washrooms are held for review** (`status: "pending"`) so the map

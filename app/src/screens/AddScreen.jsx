@@ -6,13 +6,12 @@ import MapCentre from '../components/MapCentre';
 import { useStore } from '../store';
 import { useDataStore } from '../dataStore';
 import { useToastStore } from '../toastStore';
-import { useCaptchaStore } from '../captchaStore';
 import { useCurrentLocation } from '../hooks/useWashroomData';
 import { requestLocation } from '../lib/geolocation';
 import { FEATURES, TYPES } from '../data/locations';
 import { IconBack } from '../components/Icons';
 import { Chip, ToggleTrack } from '../components/ui';
-import { HumanCheck } from '../components/HumanCheck';
+import { ProtectedNote } from '../components/ProtectedNote';
 
 const defaultFeatures = { wheelchair: false, babyChange: false, genderNeutral: false, free: true, openNow: false, noKey: true };
 
@@ -22,8 +21,6 @@ export default function AddScreen({ t }) {
   const submitWashroom = useDataStore((s) => s.submitWashroom);
   const dark = useStore((s) => s.dark);
   const locationStatus = useStore((s) => s.locationStatus);
-  const passedUntil = useCaptchaStore((s) => s.passedUntil);
-  const stillPassed = useCaptchaStore((s) => s.stillPassed);
   const here = useCurrentLocation();
 
   const [name, setName] = useState('');
@@ -42,7 +39,6 @@ export default function AddScreen({ t }) {
     return () => { cancelled = true; };
   }, []);
 
-  const human = passedUntil > Date.now();
   const pinned = here.fromDevice && here.live;
 
   const updatePin = async () => {
@@ -55,12 +51,11 @@ export default function AddScreen({ t }) {
 
   const toggleFeature = (key) => setFeatures((f) => ({ ...f, [key]: !f[key] }));
 
-  const canSubmit = !!name.trim() && pinned && human && !saving;
+  const canSubmit = !!name.trim() && pinned && !saving;
 
   const submit = async () => {
     if (!name.trim() || saving) return;
     if (!pinned) { flash('We need your location to place this washroom on the map.'); return; }
-    if (!stillPassed()) { flash('Answer the quick human check, then submit.'); return; }
 
     setSaving(true);
     try {
@@ -163,8 +158,6 @@ export default function AddScreen({ t }) {
           </div>
         </div>
 
-        <HumanCheck t={t} note="New washrooms go to a real person to check, so we ask this first." />
-
         <button
           type="button"
           onClick={submit}
@@ -181,12 +174,13 @@ export default function AddScreen({ t }) {
           {saving ? 'Submitting…'
             : !name.trim() ? 'Name it to submit'
               : !pinned ? 'Location needed to submit'
-                : !human ? 'Answer the check to submit'
-                  : 'Submit for review'}
+                : 'Submit for review'}
         </button>
         <div style={{ fontSize: 11, lineHeight: 1.55, color: t.sub, textAlign: 'center' }}>
           New submissions are checked before they appear on the map, so it won’t show up straight away.
         </div>
+
+        <ProtectedNote t={t} style={{ marginTop: -6 }} />
       </div>
     </div>
   );
