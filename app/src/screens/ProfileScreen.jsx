@@ -33,7 +33,7 @@ export default function ProfileScreen({ t }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-.03em' }}>{name}</div>
               <div style={{ fontSize: 12, opacity: 0.75, marginTop: 3 }}>
-                {myReviews.length === 0 ? 'No reviews yet' : `Reviewing washrooms in Calgary`}
+                {myReviews.length === 0 ? 'No reviews yet' : 'Reviewing washrooms across Canada'}
               </div>
             </div>
             <button type="button" aria-label="Settings" onClick={() => navigate('/settings')} style={{ width: 38, height: 38, flex: 'none', borderRadius: 12, background: 'rgba(255,244,248,.16)', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

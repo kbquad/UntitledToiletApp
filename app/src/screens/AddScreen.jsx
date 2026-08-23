@@ -98,7 +98,7 @@ export default function AddScreen({ t }) {
           <MapContainer center={[here.lat, here.lng]} zoom={15} zoomControl={false} dragging={false} scrollWheelZoom={false} doubleClickZoom={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
             <MapReady />
             <MapCentre lat={here.lat} lng={here.lng} zoom={15} />
-            <TileLayer url={dark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'} />
+            <TileLayer detectRetina maxZoom={20} maxNativeZoom={20} url={dark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'} />
           </MapContainer>
           <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, pointerEvents: 'none', opacity: pinned ? 1 : 0.5 }}>
             <div style={{ padding: '5px 11px', borderRadius: 11, background: pinned ? t.accent : t.sub, color: '#FFFFFF', fontSize: 11.5, fontWeight: 600, boxShadow: '0 4px 14px rgba(0,0,0,.24)' }}>

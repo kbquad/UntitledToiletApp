@@ -21,6 +21,7 @@ export default function SettingsScreen({ t }) {
   const notify = useStore((s) => s.notify);
   const toggleNotify = useStore((s) => s.toggleNotify);
   const locationStatus = useStore((s) => s.locationStatus);
+  const forgetLocation = useStore((s) => s.forgetLocation);
   const here = useCurrentLocation();
 
   const [locating, setLocating] = useState(false);
@@ -42,7 +43,7 @@ export default function SettingsScreen({ t }) {
     if (locating) return 'Finding you…';
     if (locationStatus === 'denied') return 'Blocked for this site — allow it in your browser settings';
     if (locationStatus === 'unavailable') return 'Your browser couldn’t provide a position';
-    if (!here.fromDevice) return 'Off — distances are measured from downtown Calgary';
+    if (!here.fromDevice) return 'Off — distances are measured from downtown Toronto';
     if (here.live) return `Following you${here.at ? ` · updated ${relativeTime(here.at).toLowerCase()}` : ''}`;
     return `Last fix ${relativeTime(here.at).toLowerCase()} — tap to refresh`;
   };
@@ -146,10 +147,10 @@ export default function SettingsScreen({ t }) {
             <span style={{ fontSize: 12.5, color: t.text }}>Replay the intro</span>
             <IconChevronRight color={t.sub} />
           </button>
-          <button type="button" onClick={() => flash('Your location is only used on-device to sort what’s nearby. It is never sent anywhere.')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+          <button type="button" onClick={() => { forgetLocation(); flash('Location forgotten. It is never stored between visits anyway.'); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
             <span style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>Privacy and location</span>
-              <span style={{ display: 'block', fontSize: 10.5, color: t.sub, marginTop: 3 }}>Location stays on your device</span>
+              <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>Forget my location</span>
+              <span style={{ display: 'block', fontSize: 10.5, color: t.sub, marginTop: 3 }}>Never saved between visits — cleared when you close the app</span>
             </span>
             <IconChevronRight color={t.sub} />
           </button>

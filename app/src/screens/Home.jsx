@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { useDataStore } from '../dataStore';
 import { useWashroomData } from '../hooks/useWashroomData';
-import { AREAS } from '../data/locations';
+import { CITIES } from '../data/locations';
 import { IconGear } from '../components/Icons';
 import { ScoreBadge } from '../components/ui';
 import { Loading, ErrorNote, DemoBanner } from '../components/Status';
@@ -12,7 +12,7 @@ export default function Home({ t }) {
   const navigate = useNavigate();
   const dark = useStore((s) => s.dark);
   const toggleDark = useStore((s) => s.toggleDark);
-  const loadWashrooms = useDataStore((s) => s.loadWashrooms);
+  const loadRegion = useDataStore((s) => s.loadRegion);
   const { allDecorated, location, status, error, loading } = useWashroomData();
 
   const closest = useMemo(
@@ -23,9 +23,10 @@ export default function Home({ t }) {
     () => allDecorated.filter((w) => w.rated).sort((a, b) => b.avgRating - a.avgRating).slice(0, 3),
     [allDecorated],
   );
-  const areaCounts = useMemo(() => AREAS.map((a) => ({
-    ...a, count: allDecorated.filter((w) => w.neighbourhood === a.name).length,
-  })).filter((a) => a.count > 0), [allDecorated]);
+  // Cities are jumping-off points now, not a census: their washrooms live in
+  // regions we have not fetched, so counting what is loaded would just show
+  // zero for everywhere the user has not been.
+  const cities = useMemo(() => CITIES.slice(0, 8), []);
 
   const reviewedCount = allDecorated.filter((w) => w.reviewCount > 0).length;
 
@@ -56,7 +57,7 @@ export default function Home({ t }) {
 
         <DemoBanner t={t} />
 
-        {status === 'error' && <ErrorNote t={t} message={error} onRetry={() => loadWashrooms({ force: true })} />}
+        {status === 'error' && <ErrorNote t={t} message={error} onRetry={() => loadRegion(location.lat, location.lng, { force: true })} />}
         {loading && <Loading t={t} label="Finding washrooms near you…" />}
 
         {status === 'ready' && (
@@ -85,7 +86,9 @@ export default function Home({ t }) {
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" onClick={() => navigate('/map')} style={{ flex: 1, padding: '15px 14px', borderRadius: 16, border: `1px solid ${t.line}`, background: t.card, cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text }}>Open the map</div>
-                <div style={{ fontSize: 11, color: t.sub, marginTop: 4 }}>{allDecorated.length} washrooms across Calgary</div>
+                <div style={{ fontSize: 11, color: t.sub, marginTop: 4 }}>
+                  {allDecorated.length ? `${allDecorated.length} nearby` : 'Anywhere in Canada'}
+                </div>
               </button>
               <button type="button" onClick={() => navigate('/add')} style={{ flex: 1, padding: '15px 14px', borderRadius: 16, border: `1px solid ${t.line}`, background: t.card, cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text }}>Add a washroom</div>
@@ -94,16 +97,16 @@ export default function Home({ t }) {
             </div>
 
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 10 }}>Browse an area</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 10 }}>Somewhere else in Canada</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {areaCounts.map((a) => (
+                {cities.map((c) => (
                   <button
-                    key={a.name}
+                    key={c.name}
                     type="button"
-                    onClick={() => navigate('/map', { state: { flyTo: a } })}
-                    style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap', padding: '9px 13px', borderRadius: 11, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: t.card, color: t.text, border: `1px solid ${t.line}` }}
+                    onClick={() => navigate('/map', { state: { flyTo: c } })}
+                    style={{ whiteSpace: 'nowrap', padding: '9px 13px', borderRadius: 11, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: t.card, color: t.text, border: `1px solid ${t.line}` }}
                   >
-                    <span>{a.name}</span><span style={{ opacity: 0.5 }}>{a.count}</span>
+                    {c.name}
                   </button>
                 ))}
               </div>
@@ -135,7 +138,7 @@ export default function Home({ t }) {
               <>
                 {reviewedCount < 5 && (
                   <div style={{ fontSize: 11, color: t.sub, marginTop: -6 }}>
-                    {reviewedCount} of {allDecorated.length} rated so far — add yours as you go.
+                    {reviewedCount} of {allDecorated.length} nearby rated so far — add yours as you go.
                   </div>
                 )}
                 {topRated.map((w) => (

@@ -11,7 +11,10 @@
     "test:rules": "node scripts/test-rules.mjs",
     "emulators": "firebase emulators:start --only firestore,auth --project demo-loo",
     "seed": "node scripts/seed-firestore.mjs",
-    "seed:emulator": "node scripts/seed-firestore.mjs --emulator"
+    "seed:emulator": "node scripts/seed-firestore.mjs --emulator",
+    "import:osm": "node scripts/import-osm.mjs",
+    "import:osm:emulator": "node scripts/import-osm.mjs --emulator",
+    "wipe": "node scripts/wipe-firestore.mjs"
   },
   "dependencies": {
     "firebase": "^12.17.1",

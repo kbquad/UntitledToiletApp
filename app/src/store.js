@@ -20,8 +20,10 @@ export const useStore = create(
       onboarded: false,
 
       // { lat, lng, accuracy, at } — `at` is when the browser gave us the fix.
-      // Kept in localStorage so the first paint after a reload can sort by
-      // roughly-right distances, then corrected by the live watcher.
+      //
+      // Deliberately NOT persisted. Where someone was is not ours to keep
+      // between visits: the app asks again each time it opens and the fix dies
+      // with the tab. See lib/geolocation.js.
       userLocation: null,
 
       // idle | locating | tracking | denied | unavailable.
@@ -46,6 +48,7 @@ export const useStore = create(
       setOnboarded: (v) => set({ onboarded: v }),
       setUserLocation: (loc) => set({ userLocation: loc }),
       setLocationStatus: (locationStatus) => set({ locationStatus }),
+      forgetLocation: () => set({ userLocation: null, locationStatus: 'idle' }),
       setDisplayName: (displayName) => set({ displayName }),
 
       setHue: (hue) => set({ hue }),
@@ -67,10 +70,9 @@ export const useStore = create(
     }),
     {
       name: 'loo-preferences',
-      version: 3,
+      version: 4,
       partialize: (s) => ({
         onboarded: s.onboarded,
-        userLocation: s.userLocation,
         displayName: s.displayName,
         hue: s.hue,
         dark: s.dark,
@@ -83,17 +85,13 @@ export const useStore = create(
         minClean: s.minClean,
         reviewFilter: s.reviewFilter,
       }),
-      // v2 stored a bare { lat, lng } captured once during onboarding and never
-      // touched again. Keep the coordinates as a starting point, but timestamp
-      // them as ancient so they read as "last known" until a real fix lands.
+      // v2 captured one position during onboarding and kept it forever; v3
+      // timestamped it. v4 stops storing it at all, so the migration's job is
+      // to drop what earlier versions left behind on people's devices.
       migrate: (state, version) => {
-        if (version >= 3 || !state) return state;
-        return {
-          ...state,
-          userLocation: state.userLocation
-            ? { lat: state.userLocation.lat, lng: state.userLocation.lng, accuracy: null, at: 0 }
-            : null,
-        };
+        if (version >= 4 || !state) return state;
+        const { userLocation: _dropped, ...rest } = state;
+        return rest;
       },
     },
   ),

@@ -15,7 +15,7 @@ export default function ListScreen({ t }) {
   const setSort = useStore((s) => s.setSort);
   const units = useStore((s) => s.units);
   const radius = useStore((s) => s.radius);
-  const loadWashrooms = useDataStore((s) => s.loadWashrooms);
+  const loadRegion = useDataStore((s) => s.loadRegion);
   const { sorted, status, error, loading } = useWashroomData();
   const here = useCurrentLocation();
 
@@ -41,7 +41,7 @@ export default function ListScreen({ t }) {
         className="scroll"
         style={{ padding: '4px 18px 0', paddingBottom: 'var(--scroll-pad-b)', display: 'flex', flexDirection: 'column', gap: 12 }}
       >
-        {status === 'error' && <ErrorNote t={t} message={error} onRetry={() => loadWashrooms({ force: true })} />}
+        {status === 'error' && <ErrorNote t={t} message={error} onRetry={() => loadRegion(here.lat, here.lng, { force: true })} />}
         {loading && <Loading t={t} />}
 
         {status === 'ready' && sorted.map((w) => (

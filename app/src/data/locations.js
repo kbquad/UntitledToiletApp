@@ -1,34 +1,39 @@
-// Starter washroom locations for Calgary.
+// Reference points and the demo-mode washroom fixture.
 //
-// These are real places with approximate coordinates — close enough for a
-// city-scale map, not GPS-surveyed. They deliberately carry NO ratings,
-// scores or reviews: all of that comes from real people using the app and
-// lives in the database. A washroom nobody has reviewed simply has no score.
-//
-// This list is what `npm run seed` loads into Firestore — after editing it,
-// re-run that to push the changes up.
+// The live app's washrooms come from OpenStreetMap, imported into Firestore by
+// `npm run import:osm` and fetched a region at a time — see utils/region.js.
+// The list further down is only used in demo mode, when no Firebase config is
+// present, so a fresh clone still has something on the map.
 
-// Areas the map can fly to, with a rough centre point for each.
-export const AREAS = [
-  { name: 'Downtown', lat: 51.0480, lng: -114.0650 },
-  { name: 'East Village', lat: 51.0452, lng: -114.0470 },
-  { name: 'Beltline', lat: 51.0360, lng: -114.0760 },
-  { name: 'Kensington', lat: 51.0570, lng: -114.0910 },
-  { name: 'Bridgeland', lat: 51.0530, lng: -114.0350 },
-  { name: 'Inglewood', lat: 51.0380, lng: -114.0300 },
-  { name: 'Mission', lat: 51.0320, lng: -114.0700 },
-  { name: 'Marda Loop', lat: 51.0150, lng: -114.0920 },
-  { name: 'University', lat: 51.0770, lng: -114.1400 },
-  { name: 'North', lat: 51.0950, lng: -114.1000 },
-  { name: 'West', lat: 51.0700, lng: -114.1700 },
-  { name: 'South', lat: 50.9800, lng: -114.0700 },
-  { name: 'Northeast', lat: 51.0600, lng: -113.9800 },
+// The chips along the top of the map. Canada's largest metros, plus enough
+// spread that the list is useful east of Ontario and north of the border belt.
+export const CITIES = [
+  { name: 'Toronto', lat: 43.6532, lng: -79.3832 },
+  { name: 'Montréal', lat: 45.5019, lng: -73.5674 },
+  { name: 'Vancouver', lat: 49.2827, lng: -123.1207 },
+  { name: 'Calgary', lat: 51.0447, lng: -114.0719 },
+  { name: 'Edmonton', lat: 53.5461, lng: -113.4938 },
+  { name: 'Ottawa', lat: 45.4215, lng: -75.6972 },
+  { name: 'Winnipeg', lat: 49.8951, lng: -97.1384 },
+  { name: 'Québec City', lat: 46.8139, lng: -71.2080 },
+  { name: 'Hamilton', lat: 43.2557, lng: -79.8711 },
+  { name: 'Halifax', lat: 44.6488, lng: -63.5752 },
+  { name: 'Victoria', lat: 48.4284, lng: -123.3656 },
+  { name: 'Saskatoon', lat: 52.1332, lng: -106.6700 },
+  { name: 'Regina', lat: 50.4452, lng: -104.6189 },
+  { name: "St John's", lat: 47.5615, lng: -52.7126 },
+  { name: 'Whitehorse', lat: 60.7212, lng: -135.0568 },
+  { name: 'Yellowknife', lat: 62.4540, lng: -114.3718 },
 ];
 
-export const CALGARY_CENTER = { lat: 51.0486, lng: -114.0708 };
+// Where the map opens when we have no idea where the user is: the whole
+// country, rather than pretending to know.
+export const CANADA_VIEW = { lat: 56.1304, lng: -106.3468, zoom: 4 };
 
-// Used for distances until the browser shares a real location.
-export const FALLBACK_LOCATION = { lat: 51.0509, lng: -114.0658, label: 'Eau Claire, Downtown Calgary' };
+// Distances need an origin even before location is granted. This one is
+// labelled honestly wherever it is shown, so nobody reads "2 km away" as a
+// measurement from where they actually are.
+export const FALLBACK_LOCATION = { lat: 43.6532, lng: -79.3832, label: 'downtown Toronto' };
 
 // openFrom / openTo are decimal hours (9.5 = 9:30 AM). openTo may run past 24
 // for places closing after midnight (25 = 1 AM). 0–24 means always open.

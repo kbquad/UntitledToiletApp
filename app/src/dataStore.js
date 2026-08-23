@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 import * as db from './lib/db';
 import { isProtected } from './lib/firebase';
+import { cellKeyFor, coveredCellKeys, regionBox } from './utils/region';
 
 // Shared, server-backed content: washrooms, their scores, and reviews.
 // Personal preferences (theme, units, saved list) live in store.js instead.
 export const useDataStore = create((set, get) => ({
-  washrooms: [],
-  status: 'idle', // idle | loading | ready | error
+  // Everything fetched so far this session, keyed by id. Regions accumulate
+  // here as the user moves, and a washroom fetched twice simply overwrites
+  // itself rather than appearing twice in the list.
+  byId: {},
+  washrooms: [],           // byId as an array, kept in step for the screens
+  loadedCells: {},         // grid cells already fetched — see utils/region.js
+  status: 'idle',          // idle | loading | ready | error
   error: null,
 
   reviewsByWashroom: {},   // { [id]: Review[] }
@@ -15,16 +21,46 @@ export const useDataStore = create((set, get) => ({
   myReviews: [],
   myHelpfulReceived: 0,
 
-  async loadWashrooms({ force = false } = {}) {
-    const { status } = get();
-    if (!force && (status === 'loading' || status === 'ready')) return;
+  // Fetch the block of cells around a point, unless it is already covered.
+  // Called with the user's position, and again whenever the map is moved
+  // somewhere new.
+  async loadRegion(lat, lng, { force = false } = {}) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const key = cellKeyFor(lat, lng);
+    if (!force && get().loadedCells[key]) return;
+    if (get().status === 'loading') return;
+
     set({ status: 'loading', error: null });
     try {
       await db.startSession();
-      set({ washrooms: await db.listWashrooms(), status: 'ready' });
+      const found = await db.listWashroomsInBox(regionBox(lat, lng));
+
+      set((s) => {
+        const byId = { ...s.byId };
+        for (const w of found) byId[w.id] = w;
+
+        // Mark the whole block covered, not just the centre cell — one fetch
+        // genuinely covered all nine.
+        const loadedCells = { ...s.loadedCells };
+        for (const k of coveredCellKeys(lat, lng)) loadedCells[k] = true;
+
+        return {
+          byId,
+          washrooms: Object.values(byId).sort((a, b) => a.name.localeCompare(b.name)),
+          loadedCells,
+          status: 'ready',
+        };
+      });
     } catch (e) {
       set({ status: 'error', error: describe(e) });
     }
+  },
+
+  // After a write, the cached copy is stale. Forget the grid so the next look
+  // refetches rather than showing a score that has already moved.
+  invalidateRegions() {
+    set({ loadedCells: {} });
   },
 
   async loadReviews(washroomId, { force = false } = {}) {
@@ -48,9 +84,11 @@ export const useDataStore = create((set, get) => ({
   // Posting changes the washroom's score, so refresh both.
   async submitReview(washroomId, review) {
     await db.saveReview(washroomId, review);
+    const w = get().byId[washroomId];
+    get().invalidateRegions();
     await Promise.all([
       get().loadReviews(washroomId, { force: true }),
-      get().loadWashrooms({ force: true }),
+      w ? get().loadRegion(w.lat, w.lng, { force: true }) : Promise.resolve(),
       get().loadProfile(),
     ]);
   },

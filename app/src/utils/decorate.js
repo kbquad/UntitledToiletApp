@@ -17,15 +17,17 @@ export const decorateWashroom = (w, distMetres, units) => {
   tags.push({ label: w.fee });
 
   const distLabel = formatDistance(distMetres, units);
-  const hoursToday = formatStatus(w.openFrom, w.openTo);
+  const hoursKnown = w.hoursKnown !== false;
+  const hoursToday = hoursKnown ? formatStatus(w.openFrom, w.openTo) : 'Hours not known';
 
   return {
     ...w,
     dist: distMetres,
     rated,
     openNow: isOpenNow(w.openFrom, w.openTo),
+    hoursKnown,
     hoursToday,
-    hours: formatHoursRange(w.openFrom, w.openTo),
+    hours: hoursKnown ? formatHoursRange(w.openFrom, w.openTo) : 'Not known',
     scoreText: rated ? w.avgRating.toFixed(1) : '–',
     scoreBg: rated ? c.bg : 'transparent',
     scoreFg: rated ? c.fg : null, // caller substitutes a theme colour

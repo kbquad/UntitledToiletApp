@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useStore, LOCATION_FRESH_MS } from '../store';
 import { useDataStore } from '../dataStore';
+import { cellKeyFor } from '../utils/region';
 import { FALLBACK_LOCATION } from '../data/locations';
 import { decorateWashroom } from '../utils/decorate';
 import { distanceMetres } from '../utils/geo';
@@ -52,11 +53,15 @@ const featureOk = (w, filters, minClean) => {
   if (filters.genderNeutral && !w.genderNeutral) return false;
   if (filters.free && w.fee !== 'Free') return false;
   if (filters.noKey && w.needsKey) return false;
-  if (filters.openNow && !isOpenNow(w.openFrom, w.openTo)) return false;
+  // "Open right now" is a request for places that are provably open. A
+  // washroom whose hours nobody has recorded cannot make that claim, so it
+  // drops out — the same reasoning as the minimum-rating filter above.
+  if (filters.openNow && (w.hoursKnown === false || !isOpenNow(w.openFrom, w.openTo))) return false;
   return true;
 };
 
-// Loads the shared washroom list once, then derives the filtered/sorted views.
+// Loads the region around the user — and reloads when they move into a new
+// one — then derives the filtered/sorted views.
 export const useWashroomData = () => {
   const units = useStore((s) => s.units);
   const filters = useStore((s) => s.filters);
@@ -68,9 +73,17 @@ export const useWashroomData = () => {
   const washrooms = useDataStore((s) => s.washrooms);
   const status = useDataStore((s) => s.status);
   const error = useDataStore((s) => s.error);
-  const loadWashrooms = useDataStore((s) => s.loadWashrooms);
+  const loadRegion = useDataStore((s) => s.loadRegion);
 
-  useEffect(() => { loadWashrooms(); }, [loadWashrooms]);
+  // Keyed on the grid cell rather than the raw coordinates, so walking down
+  // the street doesn't re-run this on every GPS reading.
+  const cell = cellKeyFor(location.lat, location.lng);
+  useEffect(() => {
+    loadRegion(location.lat, location.lng);
+    // location.lat/lng are intentionally absent: the cell is what should
+    // trigger a fetch, and it is derived from them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cell, loadRegion]);
 
   const derived = useMemo(() => {
     const withDist = washrooms.map((w) => ({
@@ -106,9 +119,17 @@ export const useWashroom = (id) => {
   const units = useStore((s) => s.units);
   const location = useCurrentLocation();
   const washrooms = useDataStore((s) => s.washrooms);
-  const loadWashrooms = useDataStore((s) => s.loadWashrooms);
+  const loadRegion = useDataStore((s) => s.loadRegion);
 
-  useEffect(() => { loadWashrooms(); }, [loadWashrooms]);
+  // Opening a link to a washroom directly — from a bookmark or a shared URL —
+  // means the region around the user may not contain it. Fetching around the
+  // user is still the right first move: it covers the ordinary case of
+  // tapping a pin, and costs one query.
+  const cell = cellKeyFor(location.lat, location.lng);
+  useEffect(() => {
+    loadRegion(location.lat, location.lng);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cell, loadRegion]);
 
   return useMemo(() => {
     const w = washrooms.find((x) => x.id === id);

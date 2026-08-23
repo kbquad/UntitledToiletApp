@@ -1,0 +1,77 @@
+name: Data
+
+# Manual only. These jobs rewrite the live database, so nothing here runs on a
+# push — you pick the action and type the confirmation yourself.
+#
+# Authentication is the same Workload Identity Federation the deploy uses; the
+# loo-deployer service account already holds roles/datastore.user.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to run
+        required: true
+        type: choice
+        options:
+          - import
+          - wipe-then-import
+          - wipe
+      regions:
+        description: 'Provinces to import, comma-separated (blank = all of Canada)'
+        required: false
+        type: string
+      confirm:
+        description: 'Type DELETE-EVERYTHING to allow a wipe (ignored for import)'
+        required: false
+        type: string
+
+jobs:
+  data:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # required for Workload Identity Federation
+
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      # Fails the run before anything is deleted if the confirmation is absent.
+      - name: Wipe the database
+        if: contains(inputs.action, 'wipe')
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+        run: node scripts/wipe-firestore.mjs --confirm='${{ inputs.confirm }}'
+
+      # Overpass is slow and rate-limited; a national import takes a while.
+      - name: Import from OpenStreetMap
+        if: contains(inputs.action, 'import')
+        timeout-minutes: 120
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          if [ -n "${{ inputs.regions }}" ]; then
+            node scripts/import-osm.mjs --regions='${{ inputs.regions }}'
+          else
+            node scripts/import-osm.mjs
+          fi

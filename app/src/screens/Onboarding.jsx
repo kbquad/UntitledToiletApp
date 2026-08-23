@@ -22,7 +22,7 @@ export default function Onboarding() {
     finish();
     flash(fix
       ? 'Location on. Sorting by what’s closest to you.'
-      : 'Couldn’t get your location — showing Calgary. You can turn it on in Settings.');
+      : 'Couldn’t get your location. You can turn it on in Settings.');
   };
 
   return (
@@ -46,12 +46,12 @@ export default function Onboarding() {
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ width: 44, height: 44, borderRadius: 14, background: '#FFF4F8', color: '#8E5B75', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, fontWeight: 600 }}>L</div>
         <div style={{ fontSize: 31, fontWeight: 600, letterSpacing: '-.04em', lineHeight: 1.1 }}>A clean washroom, wherever you are.</div>
-        <div style={{ fontSize: 13.5, lineHeight: 1.6, opacity: 0.82 }}>Loo shows the public washrooms around you in Calgary, how far they are, and what other people said about how clean they were.</div>
+        <div style={{ fontSize: 13.5, lineHeight: 1.6, opacity: 0.82 }}>Loo shows the public washrooms around you, anywhere in Canada — how far they are, and what other people said about how clean they were.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
           <button type="button" onClick={allowLocation} disabled={locating} style={{ height: 52, borderRadius: 16, border: 0, background: '#FFF4F8', color: '#8E5B75', fontSize: 14, fontWeight: 600, cursor: locating ? 'progress' : 'pointer', opacity: locating ? 0.75 : 1 }}>{locating ? 'Finding you…' : 'Use my location'}</button>
-          <button type="button" onClick={finish} style={{ height: 48, borderRadius: 16, border: '1px solid rgba(255,244,248,.3)', background: 'transparent', color: '#FFF4F8', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Browse Calgary instead</button>
+          <button type="button" onClick={finish} style={{ height: 48, borderRadius: 16, border: '1px solid rgba(255,244,248,.3)', background: 'transparent', color: '#FFF4F8', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Browse the map instead</button>
         </div>
-        <div style={{ fontSize: 11, lineHeight: 1.55, opacity: 0.6, textAlign: 'center', marginTop: 2 }}>Your location stays on your device. We only use it to sort what’s nearby, and it updates as you move.</div>
+        <div style={{ fontSize: 11, lineHeight: 1.55, opacity: 0.6, textAlign: 'center', marginTop: 2 }}>Your location never leaves your device and is forgotten when you close the app. We ask again each visit.</div>
       </div>
     </div>
   );

@@ -5,13 +5,13 @@ import MapReady from '../components/MapReady';
 import { useStore } from '../store';
 import { useToastStore } from '../toastStore';
 import { useWashroomData, useCurrentLocation } from '../hooks/useWashroomData';
+import { useDataStore } from '../dataStore';
 import { requestLocation } from '../lib/geolocation';
-import { AREAS } from '../data/locations';
+import { CITIES, CANADA_VIEW } from '../data/locations';
 import { pinIcon, youAreHereIcon } from '../utils/mapIcons';
 import { IconSearch, IconFilter, IconPlus, IconTarget } from '../components/Icons';
 import { Chip } from '../components/ui';
 
-const CALGARY_CENTER = [51.0486, -114.0708];
 
 export default function MapScreen({ t }) {
   const navigate = useNavigate();
@@ -22,8 +22,9 @@ export default function MapScreen({ t }) {
   const filters = useStore((s) => s.filters);
   const minClean = useStore((s) => s.minClean);
 
-  const { mapPool, sorted, allDecorated } = useWashroomData();
+  const { mapPool, sorted } = useWashroomData();
   const here = useCurrentLocation();
+  const loadRegion = useDataStore((s) => s.loadRegion);
 
   const [map, setMap] = useState(null);
   const [recentring, setRecentring] = useState(false);
@@ -35,10 +36,23 @@ export default function MapScreen({ t }) {
     flownForState.current = true;
     const flyTo = routerLocation.state?.flyTo;
     if (flyTo) {
-      map.flyTo([flyTo.lat, flyTo.lng], 15, { duration: 1 });
-      flash(`${flyTo.name} — ${allDecorated.filter((w) => w.neighbourhood === flyTo.name).length} washrooms mapped`);
+      map.flyTo([flyTo.lat, flyTo.lng], 13, { duration: 1 });
+      flash(`Looking around ${flyTo.name}…`);
     }
-  }, [map, routerLocation.state, flash, allDecorated]);
+  }, [map, routerLocation.state, flash]);
+
+  // Panning somewhere new fetches that region. Washrooms accumulate as you
+  // explore rather than being thrown away, so panning back is instant.
+  useEffect(() => {
+    if (!map) return undefined;
+    const onMoved = () => {
+      const c = map.getCenter();
+      loadRegion(c.lat, c.lng);
+    };
+    map.on('moveend', onMoved);
+    onMoved();
+    return () => { map.off('moveend', onMoved); };
+  }, [map, loadRegion]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length + (minClean ? 1 : 0);
 
@@ -59,8 +73,10 @@ export default function MapScreen({ t }) {
   return (
     <div className="screen" style={{ background: t.mapWater }}>
       <MapContainer
-        center={CALGARY_CENTER}
-        zoom={12}
+        // Opens where the user is. Without a fix it opens on the whole country
+        // rather than on some city they may be nowhere near.
+        center={here.fromDevice ? [here.lat, here.lng] : [CANADA_VIEW.lat, CANADA_VIEW.lng]}
+        zoom={here.fromDevice ? 14 : CANADA_VIEW.zoom}
         zoomControl={false}
         attributionControl={false}
         style={{ position: 'absolute', inset: 0 }}
@@ -68,6 +84,12 @@ export default function MapScreen({ t }) {
         <MapReady onReady={onReady} />
         <TileLayer
           key={dark ? 'dark' : 'light'}
+          // detectRetina is what makes {r} resolve to "@2x" — without it the
+          // placeholder collapses to nothing and a phone gets tiles at half
+          // the resolution its screen can show.
+          detectRetina
+          maxZoom={20}
+          maxNativeZoom={20}
           url={dark
             ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
             : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'}
@@ -93,7 +115,7 @@ export default function MapScreen({ t }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'auto' }}>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, height: 46, padding: '0 15px', borderRadius: 14, background: t.card, border: `1px solid ${t.line}`, boxShadow: '0 6px 20px rgba(0,0,0,.1)' }}>
             <IconSearch color={t.sub} />
-            <span style={{ fontSize: 13.5, color: t.sub }}>Search a place in Calgary</span>
+            <span style={{ fontSize: 13.5, color: t.sub }}>Search a place in Canada</span>
           </div>
           <button type="button" aria-label="Filters" onClick={() => navigate('/filters')} style={{ width: 46, height: 46, borderRadius: 14, background: t.ink, border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(0,0,0,.2)', position: 'relative' }}>
             <IconFilter />
@@ -103,15 +125,15 @@ export default function MapScreen({ t }) {
           </button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 11, overflowX: 'auto', pointerEvents: 'auto', paddingRight: 8 }}>
-          {AREAS.map((n) => (
+          {CITIES.map((n) => (
             <Chip
               key={n.name}
               label={n.name}
               t={t}
               style={{ boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}
               onClick={() => {
-                map?.flyTo([n.lat, n.lng], 15, { duration: 1 });
-                flash(`${n.name} — ${allDecorated.filter((w) => w.neighbourhood === n.name).length} washrooms mapped`);
+                map?.flyTo([n.lat, n.lng], 13, { duration: 1 });
+                flash(`Looking around ${n.name}…`);
               }}
             />
           ))}
@@ -141,7 +163,9 @@ export default function MapScreen({ t }) {
           <div style={{ width: 42, height: 4, borderRadius: 2, background: t.line2, margin: '0 auto' }} />
         </button>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '4px 18px 10px' }}>
-          <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>{mapPool.length} washrooms on the map</div>
+          <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>
+            {mapPool.length} washroom{mapPool.length === 1 ? '' : 's'} around here
+          </div>
           <button type="button" onClick={() => navigate('/list')} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: t.ink }}>See all</button>
         </div>
         <div style={{ display: 'flex', gap: 12, padding: '0 18px 6px', overflowX: 'auto' }}>

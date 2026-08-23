@@ -15,11 +15,17 @@
 // and updated in the same transaction as the review, so the map can render 60
 // washrooms from 60 documents instead of reading every review.
 import {
-  collection, collectionGroup, doc, getDoc, getDocs, query, where,
+  collection, collectionGroup, doc, getDoc, getDocs, limit, query, where,
   runTransaction, serverTimestamp, setDoc,
 } from 'firebase/firestore';
 import { firestore, isConfigured, ensureSession, currentUserId } from './firebase';
-import { WASHROOMS as SEED_LOCATIONS } from '../data/locations';
+import { WASHROOMS as SEED_LOCATIONS, CITIES } from '../data/locations';
+import { inBox } from '../utils/region';
+import { distanceMetres } from '../utils/geo';
+
+// A ceiling on one region's worth of documents. Downtown Toronto will not come
+// close; without it, a bad box could try to stream the country.
+const REGION_LIMIT = 600;
 
 const toWashroom = (id, d) => ({
   id,
@@ -35,6 +41,10 @@ const toWashroom = (id, d) => ({
   genderNeutral: !!d.genderNeutral,
   openFrom: Number(d.openFrom),
   openTo: Number(d.openTo),
+  // Imported washrooms usually have no opening hours in OpenStreetMap. They
+  // are stored as always-open so nothing is wrongly filtered out, and flagged
+  // here so the UI can say it doesn't know rather than claiming 24 hours.
+  hoursKnown: d.hoursKnown !== false,
   reviewCount: d.reviewCount ?? 0,
   // null (not 0) when nobody has reviewed it — the UI shows "New"
   avgRating: d.reviewCount ? Math.round((d.ratingSum / d.reviewCount) * 10) / 10 : null,
@@ -51,15 +61,39 @@ const slugify = (name) => `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').repl
 
 const cleanBonus = (rating) => (rating >= 4 ? 1 : 0);
 
+// A submitted washroom needs an area label. Nothing here knows Canadian
+// geography, so name the nearest city we do know — and admit it when the
+// nearest one is hundreds of kilometres away.
+const nearestCity = (lat, lng) => {
+  let best = null;
+  let bestDist = Infinity;
+  for (const c of CITIES) {
+    const d = distanceMetres(lat, lng, c.lat, c.lng);
+    if (d < bestDist) { bestDist = d; best = c; }
+  }
+  return bestDist <= 60000 ? best.name : 'Canada';
+};
+
 // ── Firestore backing ────────────────────────────────────────────────────────
 
 const remote = {
-  async listWashrooms() {
-    // Security rules filter nothing — an unnarrowed query would be rejected
-    // outright because it *could* match a pending washroom. Narrow it here.
-    const snap = await getDocs(
-      query(collection(firestore, 'washrooms'), where('status', '==', 'published')),
-    );
+  // Only the washrooms inside this box. Firestore allows range filters on two
+  // different fields in one query, so the box needs no geohash scheme — just
+  // the composite index declared in firestore.indexes.json.
+  //
+  // The status equality filter is not optional: security rules are not a
+  // filter, so an unnarrowed query is rejected outright for *possibly*
+  // matching a pending washroom.
+  async listWashroomsInBox(box) {
+    const snap = await getDocs(query(
+      collection(firestore, 'washrooms'),
+      where('status', '==', 'published'),
+      where('lat', '>=', box.minLat),
+      where('lat', '<=', box.maxLat),
+      where('lng', '>=', box.minLng),
+      where('lng', '<=', box.maxLng),
+      limit(REGION_LIMIT),
+    ));
     return snap.docs
       .map((d) => toWashroom(d.id, d.data()))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -165,7 +199,7 @@ const remote = {
     await setDoc(doc(firestore, 'washrooms', slugify(name)), {
       name,
       type,
-      area: 'Calgary',
+      area: nearestCity(lat, lng),
       lat,
       lng,
       fee: features.free ? 'Free' : 'Check on site',
@@ -226,9 +260,9 @@ const writeLocal = (d) => localStorage.setItem(KEY, JSON.stringify(d));
 const LOCAL_USER = 'local-demo-user';
 
 const local = {
-  async listWashrooms() {
+  async listWashroomsInBox(box) {
     const { reviews } = readLocal();
-    return SEED_LOCATIONS.map((w) => {
+    return SEED_LOCATIONS.filter((w) => inBox(w, box)).map((w) => {
       const mine = reviews.filter((r) => r.washroomId === w.id);
       return {
         ...w,
@@ -308,7 +342,7 @@ const backing = isConfigured ? remote : local;
 export const isLive = isConfigured;
 export const startSession = () => (isConfigured ? ensureSession() : Promise.resolve(null));
 
-export const listWashrooms = (...a) => backing.listWashrooms(...a);
+export const listWashroomsInBox = (...a) => backing.listWashroomsInBox(...a);
 export const listReviews = (...a) => backing.listReviews(...a);
 export const saveReview = (...a) => backing.saveReview(...a);
 export const setHelpful = (...a) => backing.setHelpful(...a);
