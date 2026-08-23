@@ -8,6 +8,7 @@ import { useWashroomData, useCurrentLocation } from '../hooks/useWashroomData';
 import { useDataStore } from '../dataStore';
 import { requestLocation } from '../lib/geolocation';
 import { CITIES, CANADA_VIEW } from '../data/locations';
+import { distanceMetres } from '../utils/geo';
 import { pinIcon, youAreHereIcon } from '../utils/mapIcons';
 import { IconSearch, IconFilter, IconPlus, IconTarget } from '../components/Icons';
 import { Chip } from '../components/ui';
@@ -28,18 +29,55 @@ export default function MapScreen({ t }) {
 
   const [map, setMap] = useState(null);
   const [recentring, setRecentring] = useState(false);
+
+  // Follow mode: the map rides along with the user. On by default, so opening
+  // the map — or walking, or driving to another city — always ends up showing
+  // where you actually are rather than wherever it was last pointed.
+  //
+  // Panning or tapping a city turns it off, because a map that yanks itself
+  // back while you are reading it is unusable. The target button turns it back
+  // on, and its colour says which mode you are in.
+  const [following, setFollowing] = useState(true);
   const onReady = useCallback((m) => setMap(m), []);
   const flownForState = useRef(false);
+  const followedFrom = useRef(null);
 
   useEffect(() => {
     if (!map || flownForState.current) return;
     flownForState.current = true;
     const flyTo = routerLocation.state?.flyTo;
     if (flyTo) {
+      setFollowing(false); // they asked for somewhere specific
       map.flyTo([flyTo.lat, flyTo.lng], 13, { duration: 1 });
       flash(`Looking around ${flyTo.name}…`);
     }
   }, [map, routerLocation.state, flash]);
+
+  // The position updates for as long as the app is open, so this fires on the
+  // first fix after a cold open — the map starts on the whole country and
+  // settles onto the user as soon as the browser answers — and again whenever
+  // they have genuinely moved.
+  useEffect(() => {
+    if (!map || !following || !here.fromDevice) return;
+
+    const last = followedFrom.current;
+    const moved = !last || distanceMetres(last.lat, last.lng, here.lat, here.lng) > 25;
+    if (!moved) return;
+
+    followedFrom.current = { lat: here.lat, lng: here.lng };
+    // A first fix is a jump to somewhere new; later ones are small steps and
+    // should glide rather than swoop.
+    map.flyTo([here.lat, here.lng], last ? map.getZoom() : 15, { duration: last ? 0.6 : 1.2 });
+  }, [map, following, here.fromDevice, here.lat, here.lng]);
+
+  // Dragging is the user taking the wheel. Programmatic moves are not: Leaflet
+  // reports those without originalEvent, which is how the two are told apart.
+  useEffect(() => {
+    if (!map) return undefined;
+    const onDragged = () => setFollowing(false);
+    map.on('dragstart', onDragged);
+    return () => { map.off('dragstart', onDragged); };
+  }, [map]);
 
   // Panning somewhere new fetches that region. Washrooms accumulate as you
   // explore rather than being thrown away, so panning back is instant.
@@ -63,10 +101,13 @@ export default function MapScreen({ t }) {
     setRecentring(true);
     const fix = await requestLocation();
     setRecentring(false);
+
     const target = fix ?? here;
+    followedFrom.current = { lat: target.lat, lng: target.lng };
+    setFollowing(true);
     map?.flyTo([target.lat, target.lng], 15, { duration: 1 });
     flash(fix
-      ? 'Centred on where you are now.'
+      ? 'Following you again.'
       : `Couldn’t get a fix — centred on ${here.label}.`);
   };
 
@@ -147,11 +188,18 @@ export default function MapScreen({ t }) {
         </div>
         <button
           type="button"
-          aria-label="Recentre on my location"
+          aria-label={following ? 'Following your location' : 'Recentre on my location'}
+          aria-pressed={following}
           onClick={recentre}
-          style={{ width: 44, height: 44, borderRadius: 14, background: t.card, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,.14)' }}
+          style={{
+            width: 44, height: 44, borderRadius: 14, cursor: 'pointer',
+            background: following ? t.ink : t.card,
+            border: `1px solid ${following ? t.ink : t.line}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 6px 18px rgba(0,0,0,.14)',
+          }}
         >
-          <IconTarget color={recentring ? t.sub : t.ink} />
+          <IconTarget color={recentring ? t.sub : (following ? '#FFF4F8' : t.ink)} />
         </button>
         <button type="button" aria-label="Add a washroom" onClick={() => navigate('/add')} style={{ width: 44, height: 44, borderRadius: 14, background: t.accent, border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
           <IconPlus />

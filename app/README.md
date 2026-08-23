@@ -83,6 +83,17 @@ npm run import:osm -- --dry-run         # fetch and map, write nothing
 Re-running is safe: documents are keyed by OSM id, so an import updates a
 washroom rather than duplicating it, and `merge` leaves earned scores alone.
 
+Duplicates are inevitable where the old curated list overlaps OpenStreetMap,
+or where OSM carries both a node and a way for one building:
+
+```bash
+npm run dedupe                 # report only, changes nothing
+npm run dedupe -- --apply      # delete the extras
+```
+
+A washroom carrying reviews is never deleted; otherwise the OpenStreetMap copy
+wins, since that is the one future imports keep updating.
+
 To start over — **this deletes every washroom and review, permanently**:
 
 ```bash

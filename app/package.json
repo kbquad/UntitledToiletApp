@@ -14,7 +14,8 @@
     "seed:emulator": "node scripts/seed-firestore.mjs --emulator",
     "import:osm": "node scripts/import-osm.mjs",
     "import:osm:emulator": "node scripts/import-osm.mjs --emulator",
-    "wipe": "node scripts/wipe-firestore.mjs"
+    "wipe": "node scripts/wipe-firestore.mjs",
+    "dedupe": "node scripts/dedupe-washrooms.mjs"
   },
   "dependencies": {
     "firebase": "^12.17.1",
