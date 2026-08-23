@@ -51,17 +51,33 @@ if (!chosen.length) {
   process.exit(1);
 }
 
+// map_to_area rather than a bare area{} lookup: the area index is built
+// separately and does not always carry a province under the tags you expect,
+// whereas the relation always exists. `out center;` is body mode, which
+// already includes tags — `out center tags;` mixes the geometry and verbosity
+// modifiers and some instances reject it.
 const query = (iso) => `
 [out:json][timeout:540];
-area["ISO3166-2"="${iso}"][admin_level=4]->.region;
+rel["ISO3166-2"="${iso}"]["admin_level"="4"];
+map_to_area->.region;
 (
   node["amenity"="toilets"](area.region);
   way["amenity"="toilets"](area.region);
   relation["amenity"="toilets"](area.region);
 );
-out center tags;`;
+out center;`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Overpass instances sit behind filters that reject requests with no
+// User-Agent — often as a 406, which reads like a syntax error and is not one.
+// Identifying the client is both the fix and the courtesy: it gives their
+// admins someone to contact if this ever misbehaves.
+const HEADERS = {
+  'Content-Type': 'application/x-www-form-urlencoded',
+  Accept: 'application/json',
+  'User-Agent': 'Loo washroom finder (+https://github.com/kbquad/UntitledToiletApp)',
+};
 
 // Overpass is a free, shared, frequently-busy service. 429 and 504 are normal
 // operation, not failure — back off and come back rather than hammering it.
@@ -71,16 +87,21 @@ const fetchRegion = async (iso, label) => {
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: HEADERS,
         body: new URLSearchParams({ data: query(iso) }),
       });
-      if (res.status === 429 || res.status === 504) throw new Error(`busy (${res.status})`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // Overpass explains itself in the body. Without this the caller is
+        // left guessing whether a 4xx is the query, the headers or the load.
+        const detail = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 300);
+        throw new Error(`HTTP ${res.status} from ${new URL(endpoint).host}${detail ? ` — ${detail}` : ''}`);
+      }
       const json = await res.json();
       return json.elements ?? [];
     } catch (e) {
       const wait = 15000 * (attempt + 1);
-      console.log(`  ${label}: ${e.message} — retrying in ${wait / 1000}s`);
+      console.log(`  ${label}: ${e.message}`);
+      console.log(`  retrying in ${wait / 1000}s`);
       await sleep(wait);
     }
   }
