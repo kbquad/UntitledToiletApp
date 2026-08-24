@@ -4,12 +4,13 @@ import { useStore } from '../store';
 import { useDataStore } from '../dataStore';
 import { stars } from '../theme';
 import { relativeTime } from '../utils/time';
-import { IconGear } from '../components/Icons';
 import { DemoBanner } from '../components/Status';
 
 export default function ProfileScreen({ t }) {
   const navigate = useNavigate();
   const displayName = useStore((s) => s.displayName);
+  const dark = useStore((s) => s.dark);
+  const toggleDark = useStore((s) => s.toggleDark);
   const myReviews = useDataStore((s) => s.myReviews);
   const myHelpfulReceived = useDataStore((s) => s.myHelpfulReceived);
   const loadProfile = useDataStore((s) => s.loadProfile);
@@ -25,26 +26,36 @@ export default function ProfileScreen({ t }) {
   return (
     <div className="screen" style={{ background: t.bg }}>
       <div className="scroll" style={{ paddingBottom: 'var(--scroll-pad-b)' }}>
-        <div style={{ padding: '20px 18px 22px', paddingTop: 'calc(20px + var(--safe-t))', background: t.hero, color: t.onInk, borderRadius: '0 0 24px 24px' }}>
+        {/* A slab barely lifted off the page, with its own text colours. It
+            used to inherit t.onInk — the colour meant for text sitting ON the
+            accent — which on a dark header rendered near-black on near-black. */}
+        <div style={{ padding: '20px 18px 22px', paddingTop: 'calc(20px + var(--safe-t))', background: t.hero, color: t.text, borderRadius: '0 0 24px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 18, background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, fontWeight: 600, flex: 'none' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 18, background: t.accent, color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, fontWeight: 600, flex: 'none' }}>
               {name === 'A local' ? 'AL' : name.split(' ').filter(Boolean).map((x) => x[0]).join('').slice(0, 2).toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-.03em' }}>{name}</div>
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 3 }}>
+              <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-.03em', color: t.text }}>{name}</div>
+              <div style={{ fontSize: 12, color: t.sub, marginTop: 3 }}>
                 {myReviews.length === 0 ? 'No reviews yet' : 'Reviewing washrooms across Canada'}
               </div>
             </div>
-            <button type="button" aria-label="Settings" onClick={() => navigate('/settings')} style={{ width: 38, height: 38, flex: 'none', borderRadius: 12, background: 'rgba(255,244,248,.16)', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <IconGear color={t.onInk} />
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              style={{ flex: 'none', height: 38, padding: '0 15px', borderRadius: 12, background: t.tagBg, border: `1px solid ${t.line}`, cursor: 'pointer', color: t.text, fontSize: 12.5, fontWeight: 600 }}
+            >
+              Edit
+            </button>
+            <button type="button" aria-label={dark ? 'Switch to light' : 'Switch to dark'} onClick={toggleDark} style={{ width: 38, height: 38, flex: 'none', borderRadius: 12, background: t.tagBg, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.text, fontSize: 14, lineHeight: 1 }}>
+              {dark ? '☀' : '☾'}
             </button>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
             {stats.map((s) => (
-              <div key={s.label} style={{ flex: 1, padding: '13px 12px', borderRadius: 15, background: 'rgba(255,244,248,.14)' }}>
-                <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-.03em' }}>{s.value}</div>
-                <div style={{ fontSize: 10.5, opacity: 0.75, marginTop: 3, lineHeight: 1.3 }}>{s.label}</div>
+              <div key={s.label} style={{ flex: 1, padding: '13px 12px', borderRadius: 15, background: t.tagBg, border: `1px solid ${t.line}` }}>
+                <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-.03em', color: t.text }}>{s.value}</div>
+                <div style={{ fontSize: 10.5, color: t.sub, marginTop: 3, lineHeight: 1.3 }}>{s.label}</div>
               </div>
             ))}
           </div>

@@ -44,7 +44,7 @@ export const makeTheme = (h, dark) => {
     return {
       bg: '#0A0A0C',
       card: '#131418',
-      hero: '#1A1C22',
+      hero: '#14161B',
       text: '#F2F2F5',
       body: '#C7C8D0',
       sub: '#8A8C97',
@@ -68,7 +68,7 @@ export const makeTheme = (h, dark) => {
   return {
     bg: '#F6F6F8',
     card: '#FFFFFF',
-    hero: '#EDEEF2',
+    hero: '#EEEFF3',
     text: '#14151A',
     body: '#3D3F48',
     sub: '#71737E',
