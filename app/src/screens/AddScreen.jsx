@@ -112,7 +112,7 @@ export default function AddScreen({ t }) {
     <div className="screen" style={{ background: t.bg }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px 10px', paddingTop: 'calc(16px + var(--safe-t))' }}>
         <button type="button" aria-label="Back" onClick={() => navigate(-1)} style={{ width: 38, height: 38, borderRadius: 12, background: t.card, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <IconBack color={t.ink} />
+          <IconBack color={t.text} />
         </button>
         <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>Add a washroom</div>
       </div>

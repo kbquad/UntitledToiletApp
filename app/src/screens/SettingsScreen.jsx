@@ -137,9 +137,13 @@ export default function SettingsScreen({ t }) {
         </Section>
 
         <Section t={t} title="Appearance">
-          <div style={{ padding: '18px 16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, borderBottom: `1px solid ${t.line}` }}>
+          <Pair t={t} a="Light" b="Dark" value={dark ? 'Dark' : 'Light'} onPick={(v) => setDark(v === 'Dark')} />
+        </Section>
+
+        <Section t={t} title="Accent colour" note="Colours the buttons, chips and highlights. The rest of the app stays black.">
+          <div style={{ padding: '18px 16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
             <div style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12.5, color: t.text }}>Theme colour</span>
+              <span style={{ fontSize: 12.5, color: t.text }}>Accent</span>
               <span style={{ fontSize: 11.5, color: t.sub }}>{hueName(hue)} · {hue}°</span>
             </div>
             <div
@@ -177,7 +181,6 @@ export default function SettingsScreen({ t }) {
               ))}
             </div>
           </div>
-          <Pair t={t} a="Light" b="Dark" value={dark ? 'Dark' : 'Light'} onPick={(v) => setDark(v === 'Dark')} />
         </Section>
 
         <Section
