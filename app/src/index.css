@@ -2,7 +2,8 @@
    the stylesheet needs no rewriting when it's inlined for distribution. */
 
 :root {
-  color-scheme: light;
+  /* The app opens dark; the light theme is a choice, not the default. */
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -14,13 +15,13 @@ html, body {
 }
 
 body {
-  background: var(--t-bg, #F4E4EB);
+  background: var(--t-bg, #0B0B0E);
   font-family: 'Sora', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  color: var(--t-text, #3A2932);
+  color: var(--t-text, #EDEDF2);
 }
 
-a { color: var(--accent, #A9557A); text-decoration: none; }
+a { color: var(--accent, #6E9BFF); text-decoration: none; }
 
 input, textarea, button, select { font-family: inherit; }
 button { -webkit-tap-highlight-color: transparent; }

@@ -18,6 +18,8 @@ export default function SettingsScreen({ t }) {
   const setDark = useStore((s) => s.setDark);
   const units = useStore((s) => s.units);
   const setUnits = useStore((s) => s.setUnits);
+  const locationAccuracy = useStore((s) => s.locationAccuracy);
+  const setLocationAccuracy = useStore((s) => s.setLocationAccuracy);
   const notify = useStore((s) => s.notify);
   const toggleNotify = useStore((s) => s.toggleNotify);
   const locationStatus = useStore((s) => s.locationStatus);
@@ -121,10 +123,23 @@ export default function SettingsScreen({ t }) {
         </div>
 
         <div style={{ padding: 16, borderRadius: 18, background: t.card, border: `1px solid ${t.line}` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text, marginBottom: 11 }}>Location accuracy</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Chip label="Exact location" active={locationAccuracy === 'Exact'} t={t} onClick={() => setLocationAccuracy('Exact')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
+            <Chip label="General area" active={locationAccuracy === 'General'} t={t} onClick={() => setLocationAccuracy('General')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
+          </div>
+          <div style={{ fontSize: 11, lineHeight: 1.5, color: t.sub, marginTop: 10 }}>
+            {locationAccuracy === 'Exact'
+              ? 'Distances are measured from where you are standing.'
+              : 'Your position is rounded to about a kilometre before anything uses it.'}
+          </div>
+        </div>
+
+        <div style={{ padding: 16, borderRadius: 18, background: t.card, border: `1px solid ${t.line}` }}>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text, marginBottom: 11 }}>Distance units</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Chip label="Metric" active={units === 'Metric'} t={t} onClick={() => setUnits('Metric')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
-            <Chip label="Imperial" active={units === 'Imperial'} t={t} onClick={() => setUnits('Imperial')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
+            <Chip label="Kilometres" active={units === 'Metric'} t={t} onClick={() => setUnits('Metric')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
+            <Chip label="Miles" active={units === 'Imperial'} t={t} onClick={() => setUnits('Imperial')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
           </div>
         </div>
 

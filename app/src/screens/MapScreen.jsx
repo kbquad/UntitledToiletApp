@@ -199,7 +199,7 @@ export default function MapScreen({ t }) {
             boxShadow: '0 6px 18px rgba(0,0,0,.14)',
           }}
         >
-          <IconTarget color={recentring ? t.sub : (following ? '#FFF4F8' : t.ink)} />
+          <IconTarget color={recentring ? t.sub : (following ? t.onInk : t.ink)} />
         </button>
         <button type="button" aria-label="Add a washroom" onClick={() => navigate('/add')} style={{ width: 44, height: 44, borderRadius: 14, background: t.accent, border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
           <IconPlus />

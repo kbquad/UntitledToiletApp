@@ -27,8 +27,8 @@ export default function ListScreen({ t }) {
             <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-.03em', color: t.text }}>Nearby</div>
             <div style={{ fontSize: 12, color: t.sub, marginTop: 3 }}>Near {here.label} · within {formatDistance(radius, units)}</div>
           </div>
-          <button type="button" onClick={() => navigate('/map')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 13px', borderRadius: 12, background: t.ink, border: 0, color: '#FFF4F8', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-            <IconMap color="#FFF4F8" /> Map
+          <button type="button" onClick={() => navigate('/map')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 13px', borderRadius: 12, background: t.ink, border: 0, color: t.onInk, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+            <IconMap color={t.onInk} /> Map
           </button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14, overflowX: 'auto' }}>

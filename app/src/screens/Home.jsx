@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { useDataStore } from '../dataStore';
 import { useWashroomData } from '../hooks/useWashroomData';
 import { CITIES } from '../data/locations';
+import { formatDistance } from '../utils/geo';
 import { IconGear } from '../components/Icons';
 import { ScoreBadge } from '../components/ui';
 import { Loading, ErrorNote, DemoBanner } from '../components/Status';
@@ -12,23 +13,25 @@ export default function Home({ t }) {
   const navigate = useNavigate();
   const dark = useStore((s) => s.dark);
   const toggleDark = useStore((s) => s.toggleDark);
+  const radius = useStore((s) => s.radius);
+  const units = useStore((s) => s.units);
   const loadRegion = useDataStore((s) => s.loadRegion);
-  const { allDecorated, location, status, error, loading } = useWashroomData();
+  const { allDecorated, nearby, location, status, error, loading } = useWashroomData();
 
   const closest = useMemo(
     () => [...allDecorated].sort((a, b) => a.dist - b.dist)[0],
     [allDecorated],
   );
-  const topRated = useMemo(
+
+  // "Rated clean this week" — the design's phrasing. Only rated washrooms can
+  // appear, and unrated ones are absent rather than shown as zero.
+  const ratedClean = useMemo(
     () => allDecorated.filter((w) => w.rated).sort((a, b) => b.avgRating - a.avgRating).slice(0, 3),
     [allDecorated],
   );
-  // Cities are jumping-off points now, not a census: their washrooms live in
-  // regions we have not fetched, so counting what is loaded would just show
-  // zero for everywhere the user has not been.
-  const cities = useMemo(() => CITIES.slice(0, 8), []);
 
-  const reviewedCount = allDecorated.filter((w) => w.reviewCount > 0).length;
+  const cities = useMemo(() => CITIES.slice(0, 8), []);
+  const radiusLabel = formatDistance(radius, units);
 
   return (
     <div className="screen" style={{ background: t.bg }}>
@@ -36,20 +39,24 @@ export default function Home({ t }) {
         className="scroll"
         style={{
           padding: '18px 18px 0', paddingTop: 'calc(18px + var(--safe-t))',
-          paddingBottom: 'var(--scroll-pad-b)', display: 'flex', flexDirection: 'column', gap: 16,
+          paddingBottom: 'var(--scroll-pad-b)', display: 'flex', flexDirection: 'column', gap: 18,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 12, color: t.sub }}>Good {greetingPart()}</div>
-            <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-.035em', color: t.text, marginTop: 3 }}>Need a washroom?</div>
-            <div style={{ fontSize: 12, color: t.sub, marginTop: 5 }}>Near {location.label}</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, color: t.sub }}>Good {greetingPart()}</div>
+            <div style={{ fontSize: 27, fontWeight: 600, letterSpacing: '-.04em', color: t.text, marginTop: 4, lineHeight: 1.1 }}>
+              Need a washroom?
+            </div>
+            <div style={{ fontSize: 12.5, color: t.sub, marginTop: 7, lineHeight: 1.45 }}>
+              Near {location.label} · within {radiusLabel}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
-            <button type="button" aria-label="Toggle dark mode" onClick={toggleDark} style={{ width: 40, height: 40, flex: 'none', borderRadius: 13, border: `1px solid ${t.line}`, background: t.card, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.text }}>
-              <span style={{ fontSize: 15, lineHeight: 1 }}>{dark ? '☀' : '☾'}</span>
+            <button type="button" aria-label={dark ? 'Switch to light' : 'Switch to dark'} onClick={toggleDark} style={iconButton(t)}>
+              <span style={{ fontSize: 15, lineHeight: 1, color: t.text }}>{dark ? '☀' : '☾'}</span>
             </button>
-            <button type="button" aria-label="Settings" onClick={() => navigate('/settings')} style={{ width: 40, height: 40, flex: 'none', borderRadius: 13, border: `1px solid ${t.line}`, background: t.card, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button type="button" aria-label="Settings" onClick={() => navigate('/settings')} style={iconButton(t)}>
               <IconGear color={t.text} />
             </button>
           </div>
@@ -62,49 +69,68 @@ export default function Home({ t }) {
 
         {status === 'ready' && (
           <>
-            {closest && (
+            {closest ? (
               <button
                 type="button"
                 onClick={() => navigate(`/washroom/${closest.id}`)}
                 style={{
-                  textAlign: 'left', padding: 18, borderRadius: 20, border: 0, cursor: 'pointer', background: t.hero,
-                  color: '#FFF4F8', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 8px 26px rgba(22,35,58,.16)',
+                  textAlign: 'left', padding: 18, borderRadius: 22, border: `1px solid ${t.line}`,
+                  cursor: 'pointer', background: t.hero, color: t.text,
+                  display: 'flex', flexDirection: 'column', gap: 11,
                 }}
               >
-                <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', opacity: 0.7 }}>Closest to you</div>
-                <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-.03em', lineHeight: 1.25 }}>{closest.name}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ padding: '5px 10px', borderRadius: 9, background: 'rgba(246,241,232,.16)', fontSize: 12, fontWeight: 600 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.11em', textTransform: 'uppercase', color: t.sub }}>
+                  Closest to you
+                </div>
+                <div style={{ fontSize: 21, fontWeight: 600, letterSpacing: '-.03em', lineHeight: 1.2 }}>{closest.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11, flexWrap: 'wrap' }}>
+                  <span style={{
+                    padding: '6px 11px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
+                    background: closest.rated ? closest.scoreBg : t.tagBg,
+                    color: closest.rated ? closest.scoreFg : t.sub,
+                  }}
+                  >
                     {closest.rated ? `${closest.scoreText} / 5 clean` : 'Not rated yet'}
                   </span>
-                  <span style={{ fontSize: 12, opacity: 0.82 }}>{closest.distLabel}</span>
+                  <span style={{ fontSize: 12.5, color: t.body }}>{closest.distLabel}</span>
                 </div>
-                <div style={{ fontSize: 12, opacity: 0.82, lineHeight: 1.45 }}>{closest.reviewLabel}</div>
+                <div style={{ fontSize: 12.5, color: t.sub, lineHeight: 1.45 }}>{closest.reviewLabel}</div>
               </button>
+            ) : (
+              <div style={{ padding: '20px 18px', borderRadius: 20, background: t.card, border: `1px dashed ${t.line2}` }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text }}>Nothing mapped around here yet</div>
+                <div style={{ fontSize: 12, lineHeight: 1.55, color: t.sub, marginTop: 6 }}>
+                  Move the map somewhere else, or add the washroom you are standing next to.
+                </div>
+              </div>
             )}
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button type="button" onClick={() => navigate('/map')} style={{ flex: 1, padding: '15px 14px', borderRadius: 16, border: `1px solid ${t.line}`, background: t.card, cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text }}>Open the map</div>
-                <div style={{ fontSize: 11, color: t.sub, marginTop: 4 }}>
-                  {allDecorated.length ? `${allDecorated.length} nearby` : 'Anywhere in Canada'}
+              <button type="button" onClick={() => navigate('/map')} style={actionCard(t)}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>Open the map</div>
+                <div style={{ fontSize: 11.5, color: t.sub, marginTop: 5, lineHeight: 1.4 }}>
+                  {nearby.length ? `${nearby.length} within ${radiusLabel}` : 'Anywhere in Canada'}
                 </div>
               </button>
-              <button type="button" onClick={() => navigate('/add')} style={{ flex: 1, padding: '15px 14px', borderRadius: 16, border: `1px solid ${t.line}`, background: t.card, cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text }}>Add a washroom</div>
-                <div style={{ fontSize: 11, color: t.sub, marginTop: 4 }}>Takes about a minute</div>
+              <button type="button" onClick={() => navigate('/add')} style={actionCard(t)}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>Add a washroom</div>
+                <div style={{ fontSize: 11.5, color: t.sub, marginTop: 5, lineHeight: 1.4 }}>Takes about a minute</div>
               </button>
             </div>
 
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 10 }}>Somewhere else in Canada</div>
+              <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.02em', color: t.text, marginBottom: 11 }}>Browse a city</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {cities.map((c) => (
                   <button
                     key={c.name}
                     type="button"
                     onClick={() => navigate('/map', { state: { flyTo: c } })}
-                    style={{ whiteSpace: 'nowrap', padding: '9px 13px', borderRadius: 11, fontSize: 12, fontWeight: 500, cursor: 'pointer', background: t.card, color: t.text, border: `1px solid ${t.line}` }}
+                    style={{
+                      whiteSpace: 'nowrap', padding: '10px 14px', borderRadius: 12, fontSize: 12.5,
+                      fontWeight: 500, cursor: 'pointer', background: t.card, color: t.text,
+                      border: `1px solid ${t.line}`,
+                    }}
                   >
                     {c.name}
                   </button>
@@ -112,16 +138,16 @@ export default function Home({ t }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>
-                {topRated.length ? 'Top rated' : 'Nothing rated yet'}
+                {ratedClean.length ? 'Rated clean nearby' : 'Nothing rated yet'}
               </div>
-              <button type="button" onClick={() => navigate('/list')} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: t.ink }}>See all</button>
+              <button type="button" onClick={() => navigate('/list')} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, color: t.accent }}>See all</button>
             </div>
 
-            {topRated.length === 0 ? (
-              <div style={{ padding: '20px 18px', borderRadius: 18, background: t.card, border: `1px dashed ${t.line2}`, textAlign: 'center' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>No reviews yet</div>
+            {ratedClean.length === 0 ? (
+              <div style={{ padding: '20px 18px', borderRadius: 20, background: t.card, border: `1px dashed ${t.line2}`, textAlign: 'center' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text }}>No reviews yet</div>
                 <div style={{ fontSize: 12, lineHeight: 1.55, color: t.sub, marginTop: 6 }}>
                   Ratings here come from real visits. Next time you use one of these washrooms,
                   rate it — you’ll be the first, and everyone after you will see it.
@@ -129,19 +155,14 @@ export default function Home({ t }) {
                 <button
                   type="button"
                   onClick={() => navigate('/list')}
-                  style={{ marginTop: 12, height: 42, padding: '0 18px', borderRadius: 13, border: 0, background: t.ink, color: '#FFF4F8', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ marginTop: 13, height: 44, padding: '0 18px', borderRadius: 14, border: 0, background: t.accent, color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 >
                   Find one to rate
                 </button>
               </div>
             ) : (
-              <>
-                {reviewedCount < 5 && (
-                  <div style={{ fontSize: 11, color: t.sub, marginTop: -6 }}>
-                    {reviewedCount} of {allDecorated.length} nearby rated so far — add yours as you go.
-                  </div>
-                )}
-                {topRated.map((w) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {ratedClean.map((w) => (
                   <button
                     key={w.id}
                     type="button"
@@ -151,11 +172,11 @@ export default function Home({ t }) {
                     <ScoreBadge washroom={w} t={t} />
                     <span style={{ flex: 1, display: 'block', minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: 14, fontWeight: 600, letterSpacing: '-.02em', color: t.text, lineHeight: 1.3 }}>{w.name}</span>
-                      <span style={{ display: 'block', fontSize: 11.5, color: t.sub, marginTop: 3 }}>{w.metaLabel}</span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: t.sub, marginTop: 4 }}>{w.metaLabel}</span>
                     </span>
                   </button>
                 ))}
-              </>
+              </div>
             )}
           </>
         )}
@@ -163,6 +184,16 @@ export default function Home({ t }) {
     </div>
   );
 }
+
+const iconButton = (t) => ({
+  width: 42, height: 42, flex: 'none', borderRadius: 14, border: `1px solid ${t.line}`,
+  background: t.card, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+});
+
+const actionCard = (t) => ({
+  flex: 1, padding: '16px 15px', borderRadius: 18, border: `1px solid ${t.line}`,
+  background: t.card, cursor: 'pointer', textAlign: 'left',
+});
 
 function greetingPart() {
   const h = new Date().getHours();

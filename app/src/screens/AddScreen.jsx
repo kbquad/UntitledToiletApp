@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import MapReady from '../components/MapReady';
-import MapCentre from '../components/MapCentre';
 import { useStore } from '../store';
 import { useDataStore } from '../dataStore';
 import { useToastStore } from '../toastStore';
@@ -29,6 +28,13 @@ export default function AddScreen({ t }) {
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
 
+  // Where the washroom will be filed. The design lets you drag the map to
+  // place it, which is both more accurate — you are rarely standing inside the
+  // stall — and the only way to add anything at all if location is blocked.
+  const [pin, setPin] = useState(null);
+  const [map, setMap] = useState(null);
+  const onMapReady = useCallback((m) => setMap(m), []);
+
   // Whatever this screen submits becomes a point on everyone's map, so it asks
   // for a fresh reading on the way in rather than pinning the washroom at
   // wherever the app last saw the user.
@@ -39,14 +45,40 @@ export default function AddScreen({ t }) {
     return () => { cancelled = true; };
   }, []);
 
-  const pinned = here.fromDevice && here.live;
+  // The pin is wherever the map is pointing. Reading it from moveend rather
+  // than tracking drags keeps it correct however the map was moved — dragged,
+  // zoomed, or flown to by the button below.
+  useEffect(() => {
+    if (!map) return undefined;
+    const sync = () => { const c = map.getCenter(); setPin({ lat: c.lat, lng: c.lng }); };
+    map.on('moveend', sync);
+    sync();
+    return () => { map.off('moveend', sync); };
+  }, [map]);
 
-  const updatePin = async () => {
+  // Once the browser answers, put the map over the user — they are usually
+  // adding the washroom they are standing next to. Only the first time, so it
+  // never yanks the map out from under someone mid-drag.
+  const [centred, setCentred] = useState(false);
+  useEffect(() => {
+    if (!map || centred || !here.fromDevice) return;
+    setCentred(true);
+    map.setView([here.lat, here.lng], 17, { animate: false });
+  }, [map, centred, here.fromDevice, here.lat, here.lng]);
+
+  const pinned = !!pin;
+
+  const jumpToMe = async () => {
     if (locating) return;
     setLocating(true);
     const fix = await requestLocation();
     setLocating(false);
-    flash(fix ? 'Pin moved to where you are now.' : 'Still can’t get a fix. Check location permission for this site.');
+    if (fix) {
+      map?.setView([fix.lat, fix.lng], 17);
+      flash('Map moved to where you are. Drag to fine-tune the pin.');
+    } else {
+      flash('Still can’t get a fix — drag the map to place it yourself.');
+    }
   };
 
   const toggleFeature = (key) => setFeatures((f) => ({ ...f, [key]: !f[key] }));
@@ -55,11 +87,11 @@ export default function AddScreen({ t }) {
 
   const submit = async () => {
     if (!name.trim() || saving) return;
-    if (!pinned) { flash('We need your location to place this washroom on the map.'); return; }
+    if (!pinned) { flash('Move the map to where the washroom is first.'); return; }
 
     setSaving(true);
     try {
-      await submitWashroom({ name: name.trim(), type, lat: here.lat, lng: here.lng, features });
+      await submitWashroom({ name: name.trim(), type, lat: pin.lat, lng: pin.lng, features });
       navigate('/map');
       flash(`${name.trim()} submitted — it goes on the map once it's confirmed.`);
     } catch (e) {
@@ -69,18 +101,11 @@ export default function AddScreen({ t }) {
   };
 
   const pinNote = () => {
-    if (locating && !pinned) return 'Finding where you are…';
-    if (pinned) {
-      const within = here.accuracy ? ` (accurate to about ${Math.round(here.accuracy)} m)` : '';
-      return `Pinned where you are right now${within}. Add it while you’re standing there.`;
+    if (locating && !here.fromDevice) return 'Finding where you are…';
+    if (locationStatus === 'denied' && !here.fromDevice) {
+      return 'Location is blocked for this site, so the map starts on Canada — drag it to the washroom yourself.';
     }
-    if (locationStatus === 'denied') {
-      return 'Location is blocked for this site, so we can’t pin the washroom. Allow it in your browser’s site settings, then update the pin.';
-    }
-    if (here.fromDevice) {
-      return 'This is where you last were, not where you are now. Update the pin before submitting.';
-    }
-    return 'We need your location to put this washroom in the right place.';
+    return 'Drag the map to put the pin on the washroom, then name it.';
   };
 
   return (
@@ -94,35 +119,50 @@ export default function AddScreen({ t }) {
       <div className="scroll" style={{ padding: '8px 18px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* flex: 'none' matters — .scroll is a flex column, and an overflow:hidden
             box in one will happily shrink to nothing once the form is tall. */}
-        <div style={{ position: 'relative', height: 150, flex: 'none', borderRadius: 18, overflow: 'hidden', border: `1px solid ${t.line}` }}>
-          <MapContainer center={[here.lat, here.lng]} zoom={15} zoomControl={false} dragging={false} scrollWheelZoom={false} doubleClickZoom={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
-            <MapReady />
-            <MapCentre lat={here.lat} lng={here.lng} zoom={15} />
+        <div style={{ position: 'relative', height: 210, flex: 'none', borderRadius: 18, overflow: 'hidden', border: `1px solid ${t.line}` }}>
+          <MapContainer
+            center={[here.lat, here.lng]}
+            zoom={here.fromDevice ? 17 : 4}
+            zoomControl={false}
+            attributionControl={false}
+            style={{ position: 'absolute', inset: 0 }}
+          >
+            <MapReady onReady={onMapReady} />
             <TileLayer detectRetina maxZoom={20} maxNativeZoom={20} url={dark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'} />
           </MapContainer>
-          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, pointerEvents: 'none', opacity: pinned ? 1 : 0.5 }}>
-            <div style={{ padding: '5px 11px', borderRadius: 11, background: pinned ? t.accent : t.sub, color: '#FFFFFF', fontSize: 11.5, fontWeight: 600, boxShadow: '0 4px 14px rgba(0,0,0,.24)' }}>
-              {pinned ? 'You are here' : 'Location needed'}
+
+          {/* The pin is painted over the centre of the map rather than added to
+              it, so it stays put while the map slides underneath — which is
+              what makes dragging feel like placing something. */}
+          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, pointerEvents: 'none' }}>
+            <div style={{ padding: '5px 11px', borderRadius: 11, background: t.accent, color: '#FFFFFF', fontSize: 11.5, fontWeight: 600, boxShadow: '0 4px 14px rgba(0,0,0,.24)' }}>
+              Drag to place
             </div>
-            <div style={{ width: 2, height: 14, background: pinned ? t.accent : t.sub }} />
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: pinned ? t.accent : t.sub, boxShadow: `0 0 0 3px ${t.pinHalo}` }} />
+            <div style={{ width: 2, height: 14, background: t.accent }} />
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: t.accent, boxShadow: `0 0 0 3px ${t.pinHalo}` }} />
           </div>
+
+          <button
+            type="button"
+            aria-label="Move the map to my location"
+            onClick={jumpToMe}
+            disabled={locating}
+            style={{
+              position: 'absolute', right: 10, bottom: 10, zIndex: 1000,
+              height: 34, padding: '0 12px', borderRadius: 11,
+              border: `1px solid ${t.line}`, background: t.card, color: t.ink,
+              fontSize: 11.5, fontWeight: 600, cursor: locating ? 'progress' : 'pointer',
+              boxShadow: '0 4px 14px rgba(0,0,0,.2)',
+            }}
+          >
+            {locating ? 'Locating…' : 'Use my location'}
+          </button>
         </div>
         <div style={{ fontSize: 9.5, color: t.sub, opacity: 0.75, marginTop: -8 }}>
           Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>OpenStreetMap</a> contributors · tiles © <a href="https://carto.com/attributions" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>CARTO</a>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ fontSize: 11, lineHeight: 1.5, color: pinned ? t.sub : t.accent }}>{pinNote()}</div>
-          <button
-            type="button"
-            onClick={updatePin}
-            disabled={locating}
-            style={{ flex: 'none', height: 32, padding: '0 12px', borderRadius: 11, border: `1px solid ${t.line2}`, background: t.card, color: t.ink, fontSize: 11.5, fontWeight: 600, cursor: locating ? 'progress' : 'pointer' }}
-          >
-            {locating ? 'Locating…' : pinned ? 'Update pin' : 'Use my location'}
-          </button>
-        </div>
+        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>{pinNote()}</div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>Name or place</span>
@@ -165,7 +205,7 @@ export default function AddScreen({ t }) {
           style={{
             height: 50, borderRadius: 15, border: 0,
             background: canSubmit ? t.ink : t.trackBg,
-            color: canSubmit ? '#FFF4F8' : t.sub,
+            color: canSubmit ? t.onInk : t.sub,
             fontSize: 13.5, fontWeight: 600,
             cursor: canSubmit ? 'pointer' : 'not-allowed',
             opacity: saving ? 0.7 : 1,
@@ -173,7 +213,7 @@ export default function AddScreen({ t }) {
         >
           {saving ? 'Submitting…'
             : !name.trim() ? 'Name it to submit'
-              : !pinned ? 'Location needed to submit'
+              : !pinned ? 'Place the pin to submit'
                 : 'Submit for review'}
         </button>
         <div style={{ fontSize: 11, lineHeight: 1.55, color: t.sub, textAlign: 'center' }}>

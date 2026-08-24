@@ -35,7 +35,7 @@ export const ErrorNote = ({ t, message, onRetry }) => (
         onClick={onRetry}
         style={{
           alignSelf: 'flex-start', marginTop: 2, height: 38, padding: '0 16px', borderRadius: 12,
-          border: 0, background: t.ink, color: '#FFF4F8', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+          border: 0, background: t.ink, color: t.onInk, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
         }}
       >
         Try again

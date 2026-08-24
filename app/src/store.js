@@ -32,9 +32,19 @@ export const useStore = create(
       locationStatus: 'idle',
 
       displayName: '',      // optional; blank posts as "A local"
-      hue: 340,
-      dark: false,
+
+      // The design opens dark, on blue. Only new installs get these — anyone
+      // who has already picked a colour or an appearance keeps their choice,
+      // which is why this is a default rather than a migration.
+      hue: 258,
+      dark: true,
       units: 'Metric',
+
+      // 'Exact' measures from the fix the browser gives; 'General' rounds it to
+      // roughly a neighbourhood first. The design offers the choice, and it is
+      // a real one — a rounded position is still useful for "what's nearby"
+      // while being a good deal less revealing.
+      locationAccuracy: 'Exact',
       notify: true,
 
       saved: [],            // your own shortlist
@@ -55,6 +65,7 @@ export const useStore = create(
       toggleDark: () => set((s) => ({ dark: !s.dark })),
       setDark: (dark) => set({ dark }),
       setUnits: (units) => set({ units }),
+      setLocationAccuracy: (locationAccuracy) => set({ locationAccuracy }),
       toggleNotify: () => set((s) => ({ notify: !s.notify })),
 
       toggleSaved: (id) => set((s) => ({
@@ -77,6 +88,7 @@ export const useStore = create(
         hue: s.hue,
         dark: s.dark,
         units: s.units,
+        locationAccuracy: s.locationAccuracy,
         notify: s.notify,
         saved: s.saved,
         sort: s.sort,

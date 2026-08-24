@@ -65,39 +65,39 @@ export default function DetailScreen({ t }) {
   return (
     <div className="screen" style={{ background: t.bg }}>
       <div className="scroll" style={{ paddingBottom: 26 }}>
-        <div style={{ padding: '16px 18px 20px', paddingTop: 'calc(16px + var(--safe-t))', background: t.hero, color: '#FFF4F8', borderRadius: '0 0 24px 24px' }}>
+        <div style={{ padding: '16px 18px 20px', paddingTop: 'calc(16px + var(--safe-t))', background: t.hero, color: t.text, borderRadius: '0 0 24px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button type="button" aria-label="Back" onClick={() => navigate(-1)} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(255,244,248,.16)', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <IconBack color="#FFF4F8" />
+            <button type="button" aria-label="Back" onClick={() => navigate(-1)} style={{ width: 38, height: 38, borderRadius: 12, background: t.tagBg, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconBack color={t.text} />
             </button>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" aria-label="Home" onClick={() => navigate('/')} style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(255,244,248,.16)', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <IconHome color="#FFF4F8" />
+              <button type="button" aria-label="Home" onClick={() => navigate('/')} style={{ width: 38, height: 38, borderRadius: 12, background: t.tagBg, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IconHome color={t.text} />
               </button>
               <button
                 type="button"
                 aria-label={isSaved ? 'Remove from saved' : 'Save this washroom'}
                 onClick={() => { toggleSaved(id); flash(isSaved ? 'Removed from Saved.' : 'Saved. You’ll find it under Saved.'); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, height: 38, padding: '0 13px', borderRadius: 12, background: isSaved ? '#FFF4F8' : 'rgba(255,244,248,.18)', border: 0, cursor: 'pointer', color: isSaved ? '#8E5B75' : '#FFF4F8', fontSize: 12, fontWeight: 500 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, height: 38, padding: '0 13px', borderRadius: 12, background: isSaved ? t.accent : t.tagBg, border: `1px solid ${isSaved ? t.accent : t.line}`, cursor: 'pointer', color: isSaved ? '#FFFFFF' : t.text, fontSize: 12, fontWeight: 500 }}
               >
                 <IconBookmark color="currentColor" /> {isSaved ? 'Saved' : 'Save'}
               </button>
             </div>
           </div>
-          <div style={{ marginTop: 18, fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', opacity: 0.68 }}>{cur.typeLine}</div>
+          <div style={{ marginTop: 18, fontSize: 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: t.sub }}>{cur.typeLine}</div>
           <div style={{ marginTop: 6, fontSize: 25, fontWeight: 600, letterSpacing: '-.035em', lineHeight: 1.15 }}>{cur.name}</div>
-          <div style={{ marginTop: 9, fontSize: 12.5, opacity: 0.8 }}>{cur.metaLabel}</div>
+          <div style={{ marginTop: 9, fontSize: 12.5, color: t.sub }}>{cur.metaLabel}</div>
           <div style={{ marginTop: 18, display: 'flex', alignItems: 'flex-end', gap: 14 }}>
             {cur.rated ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5 }}>
                   <div style={{ fontSize: 44, fontWeight: 600, letterSpacing: '-.045em', lineHeight: 0.9 }}>{cur.scoreText}</div>
-                  <div style={{ fontSize: 13, opacity: 0.7, paddingBottom: 5 }}>/ 5 clean</div>
+                  <div style={{ fontSize: 13, color: t.sub, paddingBottom: 5 }}>/ 5 clean</div>
                 </div>
-                <div style={{ flex: 1, paddingBottom: 4, fontSize: 12, lineHeight: 1.45, opacity: 0.85 }}>{cur.reviewLabel}</div>
+                <div style={{ flex: 1, paddingBottom: 4, fontSize: 12, lineHeight: 1.45, color: t.sub }}>{cur.reviewLabel}</div>
               </>
             ) : (
-              <div style={{ fontSize: 13, lineHeight: 1.5, opacity: 0.85 }}>
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: t.sub }}>
                 Not rated yet — if you use it, you’ll be the first to say what it was like.
               </div>
             )}
@@ -117,7 +117,7 @@ export default function DetailScreen({ t }) {
               }}
               style={{ flex: 1, height: 46, borderRadius: 14, background: t.card, border: `1px solid ${t.line}`, color: t.ink, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
             >
-              <IconNavigate color={t.ink} /> Open in Maps
+              <IconNavigate color={t.ink} /> Directions
             </button>
           </div>
 

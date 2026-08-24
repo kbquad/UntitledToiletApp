@@ -34,7 +34,7 @@ export default function SavedScreen({ t }) {
               Save the washrooms you trust and they’ll be one tap away next time you’re in the neighbourhood.
               Your shortlist is private to this device.
             </div>
-            <button type="button" onClick={() => navigate('/map')} style={{ marginTop: 4, height: 44, padding: '0 20px', borderRadius: 14, border: 0, background: t.ink, color: '#FFF4F8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Browse the map</button>
+            <button type="button" onClick={() => navigate('/map')} style={{ marginTop: 4, height: 44, padding: '0 20px', borderRadius: 14, border: 0, background: t.ink, color: t.onInk, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Browse the map</button>
           </div>
         )}
 

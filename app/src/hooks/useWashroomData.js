@@ -12,9 +12,14 @@ import { isOpenNow } from '../utils/hours';
 // ago is not the same thing as one left over from yesterday's session, and
 // screens that pin data to a coordinate (Add a washroom) need to tell them
 // apart.
+// About 1 km at Canadian latitudes — a neighbourhood, not a doorstep.
+const COARSE_STEP = 0.01;
+const coarsen = (v) => Math.round(v / COARSE_STEP) * COARSE_STEP;
+
 export const useCurrentLocation = () => {
   const userLocation = useStore((s) => s.userLocation);
   const locationStatus = useStore((s) => s.locationStatus);
+  const locationAccuracy = useStore((s) => s.locationAccuracy);
 
   return useMemo(() => {
     if (!userLocation) {
@@ -32,16 +37,22 @@ export const useCurrentLocation = () => {
     const at = userLocation.at ?? 0;
     const live = locationStatus !== 'denied' && Date.now() - at <= LOCATION_FRESH_MS;
 
+    // Rounding happens here, at the single point every screen reads from, so
+    // no feature can accidentally use the precise fix when the user asked for
+    // the coarse one.
+    const coarse = locationAccuracy === 'General';
+
     return {
-      lat: userLocation.lat,
-      lng: userLocation.lng,
-      label: live ? 'your current location' : 'where you last were',
+      lat: coarse ? coarsen(userLocation.lat) : userLocation.lat,
+      lng: coarse ? coarsen(userLocation.lng) : userLocation.lng,
+      coarse,
+      label: live ? (coarse ? 'your area' : 'your current location') : 'where you last were',
       accuracy: userLocation.accuracy ?? null,
       at: at || null,
       fromDevice: true,
       live,
     };
-  }, [userLocation, locationStatus]);
+  }, [userLocation, locationStatus, locationAccuracy]);
 };
 
 const featureOk = (w, filters, minClean) => {

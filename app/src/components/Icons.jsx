@@ -16,7 +16,7 @@ export const IconSearch = ({ color = 'currentColor', size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.7"><circle cx="7" cy="7" r="4.6" /><path d="M10.6 10.6 14 14" /></svg>
 );
 
-export const IconFilter = ({ color = '#FFF4F8', size = 17 }) => (
+export const IconFilter = ({ color = '#FFFFFF', size = 17 }) => (
   <svg width={size} height={size} viewBox="0 0 18 18" fill="none" stroke={color} strokeWidth="1.7"><path d="M2 5h14M4.5 9h9M7 13h4" /></svg>
 );
 

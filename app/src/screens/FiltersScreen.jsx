@@ -69,7 +69,7 @@ export default function FiltersScreen({ t }) {
           </div>
         </div>
 
-        <button type="button" onClick={() => navigate(-1)} style={{ width: '100%', height: 50, marginTop: 22, borderRadius: 15, border: 0, background: t.ink, color: '#FFF4F8', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+        <button type="button" onClick={() => navigate(-1)} style={{ width: '100%', height: 50, marginTop: 22, borderRadius: 15, border: 0, background: t.ink, color: t.onInk, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
           Show {mapPool.length} washroom{mapPool.length === 1 ? '' : 's'}
         </button>
       </div>

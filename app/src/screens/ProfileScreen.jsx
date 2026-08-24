@@ -25,7 +25,7 @@ export default function ProfileScreen({ t }) {
   return (
     <div className="screen" style={{ background: t.bg }}>
       <div className="scroll" style={{ paddingBottom: 'var(--scroll-pad-b)' }}>
-        <div style={{ padding: '20px 18px 22px', paddingTop: 'calc(20px + var(--safe-t))', background: t.hero, color: '#FFF4F8', borderRadius: '0 0 24px 24px' }}>
+        <div style={{ padding: '20px 18px 22px', paddingTop: 'calc(20px + var(--safe-t))', background: t.hero, color: t.onInk, borderRadius: '0 0 24px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ width: 56, height: 56, borderRadius: 18, background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, fontWeight: 600, flex: 'none' }}>
               {name === 'A local' ? 'AL' : name.split(' ').filter(Boolean).map((x) => x[0]).join('').slice(0, 2).toUpperCase()}
@@ -37,7 +37,7 @@ export default function ProfileScreen({ t }) {
               </div>
             </div>
             <button type="button" aria-label="Settings" onClick={() => navigate('/settings')} style={{ width: 38, height: 38, flex: 'none', borderRadius: 12, background: 'rgba(255,244,248,.16)', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <IconGear color="#FFF4F8" />
+              <IconGear color={t.onInk} />
             </button>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
@@ -65,7 +65,7 @@ export default function ProfileScreen({ t }) {
               <button
                 type="button"
                 onClick={() => navigate('/list')}
-                style={{ marginTop: 12, height: 42, padding: '0 18px', borderRadius: 13, border: 0, background: t.ink, color: '#FFF4F8', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                style={{ marginTop: 12, height: 42, padding: '0 18px', borderRadius: 13, border: 0, background: t.ink, color: t.onInk, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
               >
                 Find one nearby
               </button>

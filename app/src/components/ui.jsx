@@ -5,7 +5,7 @@ export const Chip = ({ label, active, onClick, t, style }) => (
     style={{
       flex: 'none', padding: '8px 13px', borderRadius: 11, fontSize: 12, fontWeight: 500,
       cursor: 'pointer', whiteSpace: 'nowrap',
-      background: active ? t.ink : t.card, color: active ? '#FFF4F8' : t.body,
+      background: active ? t.ink : t.card, color: active ? t.onInk : t.body,
       border: `1px solid ${active ? t.ink : t.line2}`,
       ...style,
     }}
