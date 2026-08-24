@@ -9,8 +9,7 @@ import { requestLocation } from '../lib/geolocation';
 // street grid — so the palette here is literal rather than themed.
 const INK = '#0B0B0E';
 const GRID = '#17181C';
-const DOT = '#2563EB';
-const PAPER = '#F1F1F4';
+const BLUE = '#4C8DFF';
 const MUTED = '#9A9AA5';
 const FAINT = '#6F707A';
 
@@ -50,8 +49,8 @@ export default function Onboarding() {
           <g>
             {[[300, 128], [110, 208], [330, 232], [172, 268]].map(([cx, cy]) => (
               <g key={`${cx}-${cy}`}>
-                <circle cx={cx} cy={cy} r="15" fill="none" stroke={DOT} strokeWidth="2" opacity=".55" />
-                <circle cx={cx} cy={cy} r="6.5" fill={DOT} />
+                <circle cx={cx} cy={cy} r="15" fill="none" stroke={BLUE} strokeWidth="2" opacity=".55" />
+                <circle cx={cx} cy={cy} r="6.5" fill={BLUE} />
               </g>
             ))}
           </g>
@@ -63,28 +62,41 @@ export default function Onboarding() {
               <stop offset="1" stopColor={INK} stopOpacity="1" />
             </linearGradient>
           </defs>
-          <rect x="0" y="300" width="412" height="200" fill="url(#looFade)" />
-          <rect x="0" y="498" width="412" height="282" fill={INK} />
+          <rect x="0" y="230" width="412" height="180" fill="url(#looFade)" />
+          <rect x="0" y="408" width="412" height="372" fill={INK} />
         </svg>
       </div>
 
-      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, background: PAPER, color: INK, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600 }}>L</div>
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ width: 54, height: 54, borderRadius: 17, background: BLUE, color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 23, fontWeight: 600 }}>L</div>
         <div style={{ fontSize: 33, fontWeight: 600, letterSpacing: '-.045em', lineHeight: 1.08 }}>
           A clean washroom,<br />wherever you are.
         </div>
         <div style={{ fontSize: 14, lineHeight: 1.6, color: MUTED }}>
-          Loo shows the public washrooms around you, how far they are, and what
-          other people said about how clean they were.
+          Thousands of public washrooms across Canada — how far away they are,
+          and what other people said about how clean they were.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 2 }}>
+          {[
+            'Sorted by what is actually closest to you',
+            'Cleanliness rated 1–5 by people who went',
+            'No account, and your location is never stored',
+          ].map((line) => (
+            <div key={line} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: BLUE, flex: 'none', marginTop: 7 }} />
+              <span style={{ fontSize: 13, lineHeight: 1.5, color: MUTED }}>{line}</span>
+            </div>
+          ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginTop: 6 }}>
           <button
             type="button"
             onClick={allowLocation}
             disabled={locating}
-            style={{ height: 54, borderRadius: 16, border: 0, background: PAPER, color: INK, fontSize: 14.5, fontWeight: 600, cursor: locating ? 'progress' : 'pointer', opacity: locating ? 0.75 : 1 }}
+            style={{ height: 54, borderRadius: 16, border: 0, background: BLUE, color: '#FFFFFF', fontSize: 14.5, fontWeight: 600, cursor: locating ? 'progress' : 'pointer', opacity: locating ? 0.75 : 1 }}
           >
-            {locating ? 'Finding you…' : 'Use my location'}
+            {locating ? 'Finding you…' : 'Find washrooms near me'}
           </button>
           <button
             type="button"

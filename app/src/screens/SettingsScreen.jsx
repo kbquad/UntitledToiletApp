@@ -6,8 +6,52 @@ import { useCurrentLocation } from '../hooks/useWashroomData';
 import { requestLocation } from '../lib/geolocation';
 import { relativeTime } from '../utils/time';
 import { PRESETS, swatch, hueName } from '../theme';
+import { isLive } from '../lib/db';
+import { isProtected } from '../lib/firebase';
 import { IconBack, IconChevronRight } from '../components/Icons';
 import { Chip, Toggle } from '../components/ui';
+
+// Small uppercase label above each card, so a long settings page reads as
+// groups rather than one undifferentiated stack.
+const Section = ({ t, title, children, note }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+    <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.11em', textTransform: 'uppercase', color: t.sub, paddingLeft: 4 }}>
+      {title}
+    </div>
+    <div style={{ borderRadius: 20, background: t.card, border: `1px solid ${t.line}`, overflow: 'hidden' }}>
+      {children}
+    </div>
+    {note && <div style={{ fontSize: 11, lineHeight: 1.5, color: t.sub, padding: '0 4px' }}>{note}</div>}
+  </div>
+);
+
+const Row = ({ t, children, last, onClick, as = 'div' }) => {
+  const style = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    width: '100%', padding: '14px 15px', textAlign: 'left',
+    borderBottom: last ? 0 : `1px solid ${t.line}`,
+    background: 'transparent', border: 0,
+    ...(onClick ? { cursor: 'pointer' } : {}),
+  };
+  if (as === 'button') {
+    return <button type="button" onClick={onClick} style={{ ...style, borderBottom: last ? 0 : `1px solid ${t.line}` }}>{children}</button>;
+  }
+  return <div style={style}>{children}</div>;
+};
+
+const Label = ({ t, title, hint }) => (
+  <span style={{ display: 'block', minWidth: 0 }}>
+    <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>{title}</span>
+    {hint && <span style={{ display: 'block', fontSize: 10.5, lineHeight: 1.45, color: t.sub, marginTop: 3 }}>{hint}</span>}
+  </span>
+);
+
+const Pair = ({ t, a, b, value, onPick }) => (
+  <div style={{ display: 'flex', gap: 8, padding: '13px 15px' }}>
+    <Chip label={a} active={value === a} t={t} onClick={() => onPick(a)} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
+    <Chip label={b} active={value === b} t={t} onClick={() => onPick(b)} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
+  </div>
+);
 
 export default function SettingsScreen({ t }) {
   const navigate = useNavigate();
@@ -24,13 +68,15 @@ export default function SettingsScreen({ t }) {
   const toggleNotify = useStore((s) => s.toggleNotify);
   const locationStatus = useStore((s) => s.locationStatus);
   const forgetLocation = useStore((s) => s.forgetLocation);
+  const displayName = useStore((s) => s.displayName);
+  const setDisplayName = useStore((s) => s.setDisplayName);
   const here = useCurrentLocation();
 
   const [locating, setLocating] = useState(false);
   const dragging = useRef(false);
 
-  // Somewhere to turn location on after skipping it at onboarding, or to
-  // force a fresh fix if the browser has been sitting on an old one.
+  // Somewhere to turn location on after skipping it at the start, or to force
+  // a fresh fix if the browser has been sitting on an old one.
   const useMyLocation = async () => {
     if (locating) return;
     setLocating(true);
@@ -65,111 +111,118 @@ export default function SettingsScreen({ t }) {
 
   return (
     <div className="screen" style={{ background: t.bg }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px 10px', paddingTop: 'calc(16px + var(--safe-t))' }}>
-        <button type="button" aria-label="Back" onClick={() => navigate(-1)} style={{ width: 38, height: 38, borderRadius: 12, background: t.card, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <IconBack color={t.ink} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px 12px', paddingTop: 'calc(16px + var(--safe-t))' }}>
+        <button type="button" aria-label="Back" onClick={() => navigate(-1)} style={{ width: 40, height: 40, borderRadius: 13, background: t.card, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <IconBack color={t.text} />
         </button>
-        <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-.03em', color: t.text }}>Settings</div>
+        <div style={{ fontSize: 21, fontWeight: 600, letterSpacing: '-.035em', color: t.text }}>Settings</div>
       </div>
-      <div className="scroll" style={{ padding: '8px 18px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        <div style={{ padding: '18px 16px 20px', borderRadius: 20, background: t.card, border: `1px solid ${t.line}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: t.text }}>Theme colour</span>
-            <span style={{ fontSize: 11.5, color: t.sub }}>{hueName(hue)} · {hue}°</span>
+      <div className="scroll" style={{ padding: '6px 18px 30px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        <Section t={t} title="You" note="Your name is only attached to reviews you post. Leave it blank to stay anonymous.">
+          <div style={{ padding: '14px 15px', borderBottom: `1px solid ${t.line}` }}>
+            <div style={{ fontSize: 12.5, color: t.text, marginBottom: 9 }}>Display name</div>
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value.slice(0, 40))}
+              placeholder="A local"
+              style={{ width: '100%', height: 46, padding: '0 14px', borderRadius: 14, border: `1px solid ${t.line2}`, background: t.bg, fontSize: 13, color: t.text, outline: 'none' }}
+            />
           </div>
-          <div
-            onPointerDown={wheelDown}
-            onPointerMove={wheelMove}
-            onPointerUp={wheelUp}
-            onPointerLeave={wheelUp}
-            style={{
-              position: 'relative', width: 184, height: 184, borderRadius: '50%', cursor: 'pointer', touchAction: 'none',
-              background: 'conic-gradient(from 0deg,oklch(70% .15 0),oklch(70% .15 30),oklch(70% .15 60),oklch(70% .15 90),oklch(70% .15 120),oklch(70% .15 150),oklch(70% .15 180),oklch(70% .15 210),oklch(70% .15 240),oklch(70% .15 270),oklch(70% .15 300),oklch(70% .15 330),oklch(70% .15 360))',
-              boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06)',
-            }}
-          >
-            <div style={{ position: 'absolute', inset: 34, borderRadius: '50%', background: t.card, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 7, boxShadow: '0 2px 10px rgba(0,0,0,.12)' }}>
-              <div style={{ width: 40, height: 40, borderRadius: 13, background: swatch(hue) }} />
-              <div style={{ fontSize: 11, fontWeight: 500, color: t.sub }}>Drag the ring</div>
+          <Row t={t} last>
+            <Label t={t} title="Account" hint={isLive ? 'No signup — this device has an anonymous session' : 'Demo mode — nothing leaves this browser'} />
+            <span style={{ fontSize: 12, fontWeight: 500, color: t.sub }}>{isLive ? 'Anonymous' : 'Local'}</span>
+          </Row>
+        </Section>
+
+        <Section t={t} title="Appearance">
+          <div style={{ padding: '18px 16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, borderBottom: `1px solid ${t.line}` }}>
+            <div style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12.5, color: t.text }}>Theme colour</span>
+              <span style={{ fontSize: 11.5, color: t.sub }}>{hueName(hue)} · {hue}°</span>
             </div>
-            <div style={{ position: 'absolute', left: `${knobLeft}px`, top: `${knobTop}px`, width: 26, height: 26, margin: '-13px 0 0 -13px', borderRadius: '50%', background: swatch(hue), border: '3px solid #FFFFFF', boxShadow: '0 3px 10px rgba(0,0,0,.28)', pointerEvents: 'none' }} />
+            <div
+              onPointerDown={wheelDown}
+              onPointerMove={wheelMove}
+              onPointerUp={wheelUp}
+              onPointerLeave={wheelUp}
+              style={{
+                position: 'relative', width: 184, height: 184, borderRadius: '50%', cursor: 'pointer', touchAction: 'none',
+                background: 'conic-gradient(from 0deg,oklch(70% .15 0),oklch(70% .15 30),oklch(70% .15 60),oklch(70% .15 90),oklch(70% .15 120),oklch(70% .15 150),oklch(70% .15 180),oklch(70% .15 210),oklch(70% .15 240),oklch(70% .15 270),oklch(70% .15 300),oklch(70% .15 330),oklch(70% .15 360))',
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06)',
+              }}
+            >
+              <div style={{ position: 'absolute', inset: 34, borderRadius: '50%', background: t.card, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 13, background: swatch(hue) }} />
+                <div style={{ fontSize: 11, fontWeight: 500, color: t.sub }}>Drag the ring</div>
+              </div>
+              <div style={{ position: 'absolute', left: `${knobLeft}px`, top: `${knobTop}px`, width: 26, height: 26, margin: '-13px 0 0 -13px', borderRadius: '50%', background: swatch(hue), border: '3px solid #FFFFFF', boxShadow: '0 3px 10px rgba(0,0,0,.28)', pointerEvents: 'none' }} />
+            </div>
+            <input type="range" min={0} max={359} value={hue} onChange={(e) => setHue(Number(e.target.value))} style={{ width: '100%', accentColor: t.accent }} aria-label="Theme hue" />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, justifyContent: 'center' }}>
+              {PRESETS.map((pr) => (
+                <button
+                  key={pr.name}
+                  type="button"
+                  onClick={() => setHue(pr.hue)}
+                  title={pr.name}
+                  aria-label={pr.name}
+                  style={{
+                    width: 36, height: 36, borderRadius: 12, background: swatch(pr.hue), cursor: 'pointer',
+                    outline: '1px solid rgba(0,0,0,.06)',
+                    border: Math.abs(pr.hue - hue) < 6 ? `2px solid ${t.text}` : '2px solid transparent',
+                  }}
+                />
+              ))}
+            </div>
           </div>
-          <input type="range" min={0} max={359} value={hue} onChange={(e) => setHue(Number(e.target.value))} style={{ width: '100%', accentColor: t.ink }} />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, justifyContent: 'center' }}>
-            {PRESETS.map((pr) => (
-              <button
-                key={pr.name}
-                type="button"
-                onClick={() => setHue(pr.hue)}
-                title={pr.name}
-                style={{
-                  width: 34, height: 34, borderRadius: 11, background: swatch(pr.hue), cursor: 'pointer',
-                  outline: '1px solid rgba(0,0,0,.06)',
-                  border: Math.abs(pr.hue - hue) < 6 ? `2px solid ${t.ink}` : '2px solid transparent',
-                }}
-              />
-            ))}
-          </div>
-        </div>
+          <Pair t={t} a="Light" b="Dark" value={dark ? 'Dark' : 'Light'} onPick={(v) => setDark(v === 'Dark')} />
+        </Section>
 
-        <div style={{ padding: 16, borderRadius: 18, background: t.card, border: `1px solid ${t.line}` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text, marginBottom: 11 }}>Appearance</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Chip label="Light" active={!dark} t={t} onClick={() => setDark(false)} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
-            <Chip label="Dark" active={dark} t={t} onClick={() => setDark(true)} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
-          </div>
-          <div style={{ fontSize: 11, lineHeight: 1.5, color: t.sub, marginTop: 10 }}>The sun and moon button on Home switches these too.</div>
-        </div>
+        <Section
+          t={t}
+          title="Location"
+          note={locationAccuracy === 'Exact'
+            ? 'Distances are measured from where you are standing.'
+            : 'Your position is rounded to about a kilometre before anything uses it.'}
+        >
+          <Pair t={t} a="Exact location" b="General area" value={locationAccuracy === 'Exact' ? 'Exact location' : 'General area'} onPick={(v) => setLocationAccuracy(v === 'Exact location' ? 'Exact' : 'General')} />
+          <Row t={t} as="button" onClick={useMyLocation}>
+            <Label t={t} title="Use my location" hint={locationLine()} />
+            <IconChevronRight color={t.sub} />
+          </Row>
+          <Row t={t} as="button" last onClick={() => { forgetLocation(); flash('Location forgotten. It is never stored between visits anyway.'); }}>
+            <Label t={t} title="Forget my location" hint="Never saved between visits — cleared when you close the app" />
+            <IconChevronRight color={t.sub} />
+          </Row>
+        </Section>
 
-        <div style={{ padding: 16, borderRadius: 18, background: t.card, border: `1px solid ${t.line}` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text, marginBottom: 11 }}>Location accuracy</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Chip label="Exact location" active={locationAccuracy === 'Exact'} t={t} onClick={() => setLocationAccuracy('Exact')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
-            <Chip label="General area" active={locationAccuracy === 'General'} t={t} onClick={() => setLocationAccuracy('General')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
-          </div>
-          <div style={{ fontSize: 11, lineHeight: 1.5, color: t.sub, marginTop: 10 }}>
-            {locationAccuracy === 'Exact'
-              ? 'Distances are measured from where you are standing.'
-              : 'Your position is rounded to about a kilometre before anything uses it.'}
-          </div>
-        </div>
+        <Section t={t} title="Distance units">
+          <Pair t={t} a="Kilometres" b="Miles" value={units === 'Metric' ? 'Kilometres' : 'Miles'} onPick={(v) => setUnits(v === 'Kilometres' ? 'Metric' : 'Imperial')} />
+        </Section>
 
-        <div style={{ padding: 16, borderRadius: 18, background: t.card, border: `1px solid ${t.line}` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text, marginBottom: 11 }}>Distance units</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Chip label="Kilometres" active={units === 'Metric'} t={t} onClick={() => setUnits('Metric')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
-            <Chip label="Miles" active={units === 'Imperial'} t={t} onClick={() => setUnits('Imperial')} style={{ flex: 1, textAlign: 'center', padding: '12px 0' }} />
-          </div>
-        </div>
-
-        <div style={{ borderRadius: 18, background: t.card, border: `1px solid ${t.line}`, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, borderBottom: `1px solid ${t.line}` }}>
-            <span style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>Notify me about washrooms I saved</span>
-              <span style={{ display: 'block', fontSize: 10.5, color: t.sub, marginTop: 3 }}>New reviews and closures</span>
-            </span>
+        <Section t={t} title="Notifications">
+          <Row t={t} last>
+            <Label t={t} title="Notify me about washrooms I saved" hint="New reviews and closures" />
             <Toggle on={notify} onClick={() => { toggleNotify(); flash(notify ? 'Saved-washroom alerts off.' : 'We’ll tell you when a saved washroom gets new reviews.'); }} t={t} />
-          </div>
-          <button type="button" onClick={useMyLocation} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, borderBottom: `1px solid ${t.line}`, background: 'transparent', cursor: locating ? 'progress' : 'pointer', textAlign: 'left' }}>
-            <span style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>Use my location</span>
-              <span style={{ display: 'block', fontSize: 10.5, color: t.sub, marginTop: 3 }}>{locationLine()}</span>
-            </span>
+          </Row>
+        </Section>
+
+        <Section t={t} title="About">
+          <Row t={t}>
+            <Label t={t} title="Where washrooms come from" hint="OpenStreetMap contributors, plus places people add here" />
+            <span style={{ fontSize: 12, fontWeight: 500, color: t.sub }}>OSM</span>
+          </Row>
+          <Row t={t}>
+            <Label t={t} title="Spam protection" hint={isProtected ? 'reCAPTCHA checks each post before it is accepted' : 'Not configured for this build'} />
+            <span style={{ fontSize: 12, fontWeight: 500, color: isProtected ? t.accent : t.sub }}>{isProtected ? 'On' : 'Off'}</span>
+          </Row>
+          <Row t={t} as="button" last onClick={() => navigate('/onboarding')}>
+            <Label t={t} title="Replay the intro" />
             <IconChevronRight color={t.sub} />
-          </button>
-          <button type="button" onClick={() => navigate('/onboarding')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, borderBottom: `1px solid ${t.line}`, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-            <span style={{ fontSize: 12.5, color: t.text }}>Replay the intro</span>
-            <IconChevronRight color={t.sub} />
-          </button>
-          <button type="button" onClick={() => { forgetLocation(); flash('Location forgotten. It is never stored between visits anyway.'); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', padding: 15, border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-            <span style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 12.5, color: t.text }}>Forget my location</span>
-              <span style={{ display: 'block', fontSize: 10.5, color: t.sub, marginTop: 3 }}>Never saved between visits — cleared when you close the app</span>
-            </span>
-            <IconChevronRight color={t.sub} />
-          </button>
-        </div>
+          </Row>
+        </Section>
       </div>
     </div>
   );
