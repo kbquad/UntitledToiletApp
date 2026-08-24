@@ -49,6 +49,23 @@ reviews are shared by everyone.
 | Reviews, ratings, scores | Theme colour and dark mode | |
 | "Found this helpful" votes | Distance units, display name | |
 
+### Cookies
+
+None. The app sets no cookies of its own — verified by reading
+`document.cookie` and the browser's cookie jar after a full session. What it
+does use:
+
+| What | Where | Why |
+| --- | --- | --- |
+| `loo-preferences` | localStorage | Theme, units, saved list, display name |
+| `loo-demo-data` | localStorage | Demo mode only — reviews with no database attached |
+| `firebaseLocalStorageDb` | IndexedDB | Your anonymous Firebase session |
+| `firebase-heartbeat-database` | IndexedDB | Firebase SDK's own usage heartbeat |
+
+One caveat, and it is not ours: with reCAPTCHA configured, Google's script
+sets a `_GRECAPTCHA` cookie on its own domain. That is a third-party cookie
+from google.com, not something this app writes.
+
 ### Identity
 
 No usernames or passwords. Each browser gets an anonymous Firebase auth

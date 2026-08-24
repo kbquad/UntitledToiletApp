@@ -9,6 +9,11 @@ const defaultFilters = {
   free: false, openNow: false, noKey: false,
 };
 
+// The look the app ships with. Named so the initial state and the migration
+// that brings existing installs onto it cannot drift apart.
+export const DEFAULT_HUE = 258;
+export const DEFAULT_DARK = true;
+
 // How long a fix counts as "where you are" rather than "where you last were".
 // The watcher in lib/geolocation.js re-stamps a standing-still fix well inside
 // this, so the only way to go stale is to genuinely stop receiving positions.
@@ -33,11 +38,8 @@ export const useStore = create(
 
       displayName: '',      // optional; blank posts as "A local"
 
-      // The design opens dark, on blue. Only new installs get these — anyone
-      // who has already picked a colour or an appearance keeps their choice,
-      // which is why this is a default rather than a migration.
-      hue: 258,
-      dark: true,
+      hue: DEFAULT_HUE,
+      dark: DEFAULT_DARK,
       units: 'Metric',
 
       // 'Exact' measures from the fix the browser gives; 'General' rounds it to
@@ -81,7 +83,7 @@ export const useStore = create(
     }),
     {
       name: 'loo-preferences',
-      version: 4,
+      version: 5,
       partialize: (s) => ({
         onboarded: s.onboarded,
         displayName: s.displayName,
@@ -98,12 +100,18 @@ export const useStore = create(
         reviewFilter: s.reviewFilter,
       }),
       // v2 captured one position during onboarding and kept it forever; v3
-      // timestamped it. v4 stops storing it at all, so the migration's job is
-      // to drop what earlier versions left behind on people's devices.
+      // timestamped it; v4 stopped storing it at all. v5 moves everyone onto
+      // the black-and-accent look — the app shipped in blush, so devices that
+      // saw it are still carrying that palette, and the point of a default
+      // nobody sees is nil. The wheel in Settings puts it back in one tap.
+      //
+      // Only the two appearance keys are touched. Saved washrooms, display
+      // name, units, filters and everything else carry over untouched.
       migrate: (state, version) => {
-        if (version >= 4 || !state) return state;
+        if (!state) return state;
         const { userLocation: _dropped, ...rest } = state;
-        return rest;
+        if (version >= 5) return rest;
+        return { ...rest, hue: DEFAULT_HUE, dark: DEFAULT_DARK };
       },
     },
   ),
