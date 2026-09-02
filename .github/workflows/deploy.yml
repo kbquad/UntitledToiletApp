@@ -117,38 +117,9 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
-      # Temporary, while a deploy failure is being chased down: firebase-tools
-      # reports every token-minting failure as the same "have you run firebase
-      # login?" string, so this prints the shape of the credentials file (no
-      # secrets — the WIF file holds references, not keys) and then asks
-      # google-auth-library for a token directly, which surfaces the real GCP
-      # error. Remove both once the deploy is green again.
-      - name: Debug credentials
-        run: |
-          echo "GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-<unset>}"
-          if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-            node -e '
-              const c = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-              console.log("type:", c.type);
-              console.log("audience:", c.audience);
-              console.log("subject_token_type:", c.subject_token_type);
-              console.log("impersonation_url:", c.service_account_impersonation_url);
-              console.log("credential_source keys:", Object.keys(c.credential_source || {}));
-            '
-          fi
-          echo "--- asking google-auth-library for a token ---"
-          node -e '
-            const { GoogleAuth } = require("google-auth-library");
-            new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] })
-              .getAccessToken()
-              .then(() => console.log("token OK"))
-              .catch((e) => { console.error("TOKEN FAILED:", e.message); if (e.response?.data) console.error(JSON.stringify(e.response.data)); process.exit(1); });
-          '
-
       - name: Deploy rules, indexes and hosting
         run: |
           npx firebase deploy \
             --only firestore:rules,firestore:indexes,hosting \
             --project "${{ vars.GCP_PROJECT_ID }}" \
-            --non-interactive \
-            --debug
+            --non-interactive
