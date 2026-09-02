@@ -37,12 +37,19 @@ export const FALLBACK_LOCATION = { lat: 43.6532, lng: -79.3832, label: 'downtown
 
 // openFrom / openTo are decimal hours (9.5 = 9:30 AM). openTo may run past 24
 // for places closing after midnight (25 = 1 AM). 0–24 means always open.
+//
+// `category` is the road-trip-companion generalisation on top of the
+// original washroom-only model: 'toilet' | 'food' | 'fuel' | 'rest'. It
+// defaults to 'toilet' so every one of the calls below that predates it —
+// all real OSM-derived washrooms — needs no change.
 const w = (
   id, name, type, neighbourhood, lat, lng,
   fee, needsKey, wheelchair, babyChange, genderNeutral, openFrom, openTo,
+  category = 'toilet',
 ) => ({
   id, name, type, neighbourhood, lat, lng,
   fee, needsKey, wheelchair, babyChange, genderNeutral, openFrom, openTo,
+  category,
 });
 
 export const WASHROOMS = [
@@ -131,7 +138,29 @@ export const WASHROOMS = [
   w('elliston', 'Elliston Park', 'Park', 'Northeast', 51.0360, -113.9550, 'Free', false, false, false, false, 7, 22),
   w('internationalave', 'International Avenue (17 Ave SE)', 'Plaza', 'Northeast', 51.0410, -113.9750, 'Free', false, true, false, false, 8, 20),
   w('yyc', 'YYC Calgary International Airport', 'Transit', 'Northeast', 51.1225, -114.0130, 'Free', false, true, true, true, 0, 24),
+
+  // ── Food, fuel and rest areas — demo fixture for the road-trip companion
+  //    screens (route planning, drive simulation). Real data for these
+  //    categories isn't imported yet; user-submitted places land here too.
+  w('gordanofarm', 'Gordano Farm Kitchen', 'Café', 'Marda Loop', 51.0210, -114.1050, 'Customers only', true, true, true, true, 7, 21, 'food'),
+  w('betwscoffee', 'Betws Coffee Halt', 'Café', 'West', 51.0790, -114.1750, 'Customers only', true, true, true, false, 6.5, 18, 'food'),
+  w('newportfilling', 'Newport West Filling Stn', 'Gas station', 'South', 50.9700, -114.0500, 'Customers only', false, true, false, false, 0, 24, 'fuel'),
+  w('macleodfuel', 'Macleod Trail Fuel & Go', 'Gas station', 'South', 50.9950, -114.0700, 'Customers only', false, true, false, false, 0, 24, 'fuel'),
+  w('brenigpicnic', 'Llyn Brenig Picnic Area', 'Rest area', 'North', 51.1300, -114.1500, 'Free', false, false, false, false, 0, 24, 'rest'),
+  w('deerfootrest', 'Deerfoot Trail Rest Stop', 'Rest area', 'Northeast', 51.0900, -113.9700, 'Free', false, true, false, false, 0, 24, 'rest'),
 ];
+
+// The road-trip companion's "kind of stop" — toilets stay the historical
+// default; the rest are what the design's Stops layer and Add-a-stop flow
+// add on top.
+export const CATEGORIES = [
+  { id: 'toilet', label: 'Toilets' },
+  { id: 'food', label: 'Eatery' },
+  { id: 'fuel', label: 'Gas station' },
+  { id: 'rest', label: 'Rest area' },
+];
+
+export const categoryLabel = (id) => (CATEGORIES.find((c) => c.id === id) || CATEGORIES[0]).label;
 
 export const FEATURES = [
   { key: 'wheelchair', label: 'Wheelchair accessible', sub: 'Step-free entry and a wide stall' },
@@ -145,3 +174,12 @@ export const FEATURES = [
 export const REVIEW_TAGS = ['Spotless', 'Well stocked', 'No smell', 'Short wait', 'Dry floor', 'Needs attention'];
 export const TYPES = ['Park', 'Mall', 'Café', 'Transit', 'Library', 'Community centre'];
 export const REVIEW_FILTERS = ['Most recent', 'Most helpful', 'Good reviews', 'Bad reviews', 'Highest rated'];
+
+// Which "type" chips make sense once you've also picked a category — the
+// toilet list above is unchanged, the rest are new for the road-trip flow.
+export const TYPES_BY_CATEGORY = {
+  toilet: TYPES,
+  food: ['Café', 'Restaurant', 'Food truck', 'Bakery', 'Diner'],
+  fuel: ['Gas station', 'Truck stop', 'EV charging', 'Service station'],
+  rest: ['Rest area', 'Picnic area', 'Lay-by', 'Scenic lookout'],
+};

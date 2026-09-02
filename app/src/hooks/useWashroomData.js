@@ -55,7 +55,8 @@ export const useCurrentLocation = () => {
   }, [userLocation, locationStatus, locationAccuracy]);
 };
 
-const featureOk = (w, filters, minClean) => {
+const featureOk = (w, filters, minClean, categoryFilter) => {
+  if (categoryFilter && categoryFilter !== 'all' && (w.category || 'toilet') !== categoryFilter) return false;
   // An unrated washroom is unknown, not bad — but a minimum-rating filter is
   // an explicit request for proven-clean ones, so unrated drops out.
   if (minClean && (w.avgRating == null || w.avgRating < minClean)) return false;
@@ -77,6 +78,7 @@ export const useWashroomData = () => {
   const units = useStore((s) => s.units);
   const filters = useStore((s) => s.filters);
   const minClean = useStore((s) => s.minClean);
+  const categoryFilter = useStore((s) => s.categoryFilter);
   const radius = useStore((s) => s.radius);
   const sort = useStore((s) => s.sort);
   const location = useCurrentLocation();
@@ -102,7 +104,7 @@ export const useWashroomData = () => {
     }));
 
     const mapPool = withDist
-      .filter(({ w }) => featureOk(w, filters, minClean))
+      .filter(({ w }) => featureOk(w, filters, minClean, categoryFilter))
       .map(({ w, dist }) => decorateWashroom(w, dist, units));
 
     const nearby = mapPool.filter((w) => w.dist <= radius);
@@ -121,7 +123,7 @@ export const useWashroomData = () => {
     const allDecorated = withDist.map(({ w, dist }) => decorateWashroom(w, dist, units));
 
     return { mapPool, nearby, sorted, allDecorated, location };
-  }, [washrooms, units, filters, minClean, radius, sort, location]);
+  }, [washrooms, units, filters, minClean, categoryFilter, radius, sort, location]);
 
   return { ...derived, status, error, loading: status === 'loading' || status === 'idle' };
 };

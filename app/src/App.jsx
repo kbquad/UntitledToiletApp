@@ -16,6 +16,9 @@ import FiltersScreen from './screens/FiltersScreen';
 import SavedScreen from './screens/SavedScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import RouteScreen from './screens/RouteScreen';
+import DriveScreen from './screens/DriveScreen';
+import TripHistoryScreen from './screens/TripHistoryScreen';
 
 const WithNav = ({ t, children }) => (
   <>
@@ -50,6 +53,9 @@ function App() {
         <Route path="/add" element={<RequireOnboarding><AddScreen t={t} /></RequireOnboarding>} />
         <Route path="/filters" element={<RequireOnboarding><FiltersScreen t={t} /></RequireOnboarding>} />
         <Route path="/settings" element={<RequireOnboarding><SettingsScreen t={t} /></RequireOnboarding>} />
+        <Route path="/plan" element={<RequireOnboarding><RouteScreen t={t} /></RequireOnboarding>} />
+        <Route path="/drive" element={<RequireOnboarding><DriveScreen t={t} /></RequireOnboarding>} />
+        <Route path="/history" element={<RequireOnboarding><WithNav t={t}><TripHistoryScreen t={t} /></WithNav></RequireOnboarding>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toast t={t} />

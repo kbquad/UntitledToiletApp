@@ -12,11 +12,19 @@ export const pinIcon = (washroom, { saved, cardColor, unratedColor }) => {
     ? `<div style="padding:4px 9px 5px;border-radius:11px;background:${color};color:#FFFFFF;font-size:12px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.28);white-space:nowrap;border:${saved ? `2px solid ${cardColor}` : '0'}">${escapeHtml(washroom.scoreText)}</div>`
     : `<div style="padding:3px 8px 4px;border-radius:10px;background:${cardColor};color:${color};font-size:10.5px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.2);white-space:nowrap;border:1.5px solid ${color}">New</div>`;
 
+  // A small dot in the stop's category colour, only for the categories added
+  // on top of the original washroom-only map — toilets (almost all existing
+  // data) keep the plain pin they've always had.
+  const category = washroom.category || 'toilet';
+  const categoryDot = category !== 'toilet' && washroom.categoryColor
+    ? `<div style="position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:${washroom.categoryColor};border:2px solid ${cardColor}"></div>`
+    : '';
+
   return L.divIcon({
     className: 'loo-pin',
     html: `
       <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-        ${label}
+        <div style="position:relative">${label}${categoryDot}</div>
         <div style="width:2px;height:${washroom.rated ? 13 : 10}px;background:${color};opacity:.8"></div>
         <div style="width:7px;height:7px;border-radius:50%;background:${color};box-shadow:0 0 0 3px rgba(255,255,255,.85)"></div>
       </div>

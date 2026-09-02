@@ -56,6 +56,30 @@ export const useStore = create(
       radius: 5000,
       minClean: 0,
       reviewFilter: 'Most recent',
+      categoryFilter: 'all', // 'all' | 'toilet' | 'food' | 'fuel' | 'rest' — the map/list stop-kind filter
+
+      // Road-trip companion additions -----------------------------------
+      // How you travel — shown on the profile and used only to pre-tick
+      // facility filters when planning a route; not enforced anywhere.
+      travelPreset: null,           // 'family' | 'van' | 'access' | null
+
+      breaksOn: true,
+      breakHours: 2,
+
+      // The route currently being planned or driven. Deliberately NOT
+      // persisted: `path` can be thousands of points for a long drive, and
+      // it is cheap to ask OSRM again next time rather than carrying that in
+      // localStorage. from/to/via carry a `label` plus {lat,lng}.
+      tripFrom: null,
+      tripTo: null,
+      tripVia: [],
+      tripCategories: ['toilet', 'food', 'fuel'], // which stop categories the drive sim looks for
+      activeRoute: null,            // { source, distanceM, durationS, path } | null
+
+      // Past trips, kept lightweight on purpose — coordinates only, no
+      // geometry — so "Drive it again" re-asks OSRM rather than this store
+      // growing without bound.
+      trips: [],
 
       setOnboarded: (v) => set({ onboarded: v }),
       setUserLocation: (loc) => set({ userLocation: loc }),
@@ -78,12 +102,35 @@ export const useStore = create(
       toggleFilter: (key) => set((s) => ({ filters: { ...s.filters, [key]: !s.filters[key] } })),
       setRadius: (radius) => set({ radius }),
       setMinClean: (minClean) => set({ minClean }),
-      clearFilters: () => set({ filters: defaultFilters, radius: 5000, minClean: 0 }),
+      clearFilters: () => set({ filters: defaultFilters, radius: 5000, minClean: 0, categoryFilter: 'all' }),
       setReviewFilter: (reviewFilter) => set({ reviewFilter }),
+      setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
+
+      // Road-trip companion additions -----------------------------------
+      setTravelPreset: (travelPreset) => set({ travelPreset }),
+      toggleBreaks: () => set((s) => ({ breaksOn: !s.breaksOn })),
+      setBreakHours: (breakHours) => set({ breakHours }),
+
+      setTripFrom: (tripFrom) => set({ tripFrom }),
+      setTripTo: (tripTo) => set({ tripTo }),
+      swapTripEnds: () => set((s) => ({ tripFrom: s.tripTo, tripTo: s.tripFrom })),
+      addTripVia: (stop) => set((s) => ({ tripVia: [...s.tripVia, stop] })),
+      removeTripVia: (index) => set((s) => ({ tripVia: s.tripVia.filter((_, i) => i !== index) })),
+      clearTripVia: () => set({ tripVia: [] }),
+      toggleTripCategory: (id) => set((s) => ({
+        tripCategories: s.tripCategories.includes(id)
+          ? s.tripCategories.filter((x) => x !== id)
+          : [...s.tripCategories, id],
+      })),
+      setActiveRoute: (activeRoute) => set({ activeRoute }),
+
+      addTrip: (trip) => set((s) => ({
+        trips: [{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...trip }, ...s.trips].slice(0, 30),
+      })),
     }),
     {
       name: 'loo-preferences',
-      version: 5,
+      version: 6,
       partialize: (s) => ({
         onboarded: s.onboarded,
         displayName: s.displayName,
@@ -98,20 +145,32 @@ export const useStore = create(
         radius: s.radius,
         minClean: s.minClean,
         reviewFilter: s.reviewFilter,
+        categoryFilter: s.categoryFilter,
+        travelPreset: s.travelPreset,
+        breaksOn: s.breaksOn,
+        breakHours: s.breakHours,
+        // tripFrom/tripTo/tripVia/activeRoute are the in-progress planner —
+        // session state, not a preference, and activeRoute in particular can
+        // hold a multi-thousand-point path. None of the four are persisted.
+        trips: s.trips,
       }),
       // v2 captured one position during onboarding and kept it forever; v3
       // timestamped it; v4 stopped storing it at all. v5 moves everyone onto
       // the black-and-accent look — the app shipped in blush, so devices that
       // saw it are still carrying that palette, and the point of a default
       // nobody sees is nil. The wheel in Settings puts it back in one tap.
+      // v6 adds the road-trip companion fields (travel preset, break
+      // reminders, trip history) — plain new keys, so existing installs just
+      // pick up their defaults.
       //
-      // Only the two appearance keys are touched. Saved washrooms, display
-      // name, units, filters and everything else carry over untouched.
+      // Only the two appearance keys are touched at v5. Saved washrooms,
+      // display name, units, filters and everything else carry over untouched.
       migrate: (state, version) => {
         if (!state) return state;
         const { userLocation: _dropped, ...rest } = state;
-        if (version >= 5) return rest;
-        return { ...rest, hue: DEFAULT_HUE, dark: DEFAULT_DARK };
+        const withV5 = version >= 5 ? rest : { ...rest, hue: DEFAULT_HUE, dark: DEFAULT_DARK };
+        if (version >= 6) return withV5;
+        return { ...withV5, travelPreset: null, breaksOn: true, breakHours: 2, trips: [] };
       },
     },
   ),

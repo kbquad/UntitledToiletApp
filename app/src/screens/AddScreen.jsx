@@ -7,7 +7,7 @@ import { useDataStore } from '../dataStore';
 import { useToastStore } from '../toastStore';
 import { useCurrentLocation } from '../hooks/useWashroomData';
 import { requestLocation } from '../lib/geolocation';
-import { FEATURES, TYPES } from '../data/locations';
+import { FEATURES, TYPES_BY_CATEGORY, CATEGORIES } from '../data/locations';
 import { IconBack } from '../components/Icons';
 import { Chip, ToggleTrack } from '../components/ui';
 import { ProtectedNote } from '../components/ProtectedNote';
@@ -22,8 +22,9 @@ export default function AddScreen({ t }) {
   const locationStatus = useStore((s) => s.locationStatus);
   const here = useCurrentLocation();
 
+  const [category, setCategory] = useState('toilet');
   const [name, setName] = useState('');
-  const [type, setType] = useState('Park');
+  const [type, setType] = useState(TYPES_BY_CATEGORY.toilet[0]);
   const [features, setFeatures] = useState(defaultFeatures);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -87,12 +88,14 @@ export default function AddScreen({ t }) {
 
   const submit = async () => {
     if (!name.trim() || saving) return;
-    if (!pinned) { flash('Move the map to where the washroom is first.'); return; }
+    if (!pinned) { flash('Move the map to where the stop is first.'); return; }
 
     setSaving(true);
     try {
-      await submitWashroom({ name: name.trim(), type, lat: pin.lat, lng: pin.lng, features });
-      navigate('/map');
+      await submitWashroom({
+        name: name.trim(), type, category, lat: pin.lat, lng: pin.lng, features,
+      });
+      navigate(category === 'toilet' ? '/map' : '/list');
       flash(`${name.trim()} submitted — it goes on the map once it's confirmed.`);
     } catch (e) {
       setSaving(false);
@@ -103,9 +106,9 @@ export default function AddScreen({ t }) {
   const pinNote = () => {
     if (locating && !here.fromDevice) return 'Finding where you are…';
     if (locationStatus === 'denied' && !here.fromDevice) {
-      return 'Location is blocked for this site, so the map starts on Canada — drag it to the washroom yourself.';
+      return 'Location is blocked for this site, so the map starts on Canada — drag it to the stop yourself.';
     }
-    return 'Drag the map to put the pin on the washroom, then name it.';
+    return 'Drag the map to put the pin on the stop, then name it.';
   };
 
   return (
@@ -114,7 +117,7 @@ export default function AddScreen({ t }) {
         <button type="button" aria-label="Back" onClick={() => navigate(-1)} style={{ width: 38, height: 38, borderRadius: 12, background: t.card, border: `1px solid ${t.line}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <IconBack color={t.text} />
         </button>
-        <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>Add a washroom</div>
+        <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>Add a stop</div>
       </div>
       <div className="scroll" style={{ padding: '8px 18px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* flex: 'none' matters — .scroll is a flex column, and an overflow:hidden
@@ -164,6 +167,28 @@ export default function AddScreen({ t }) {
 
         <div style={{ fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>{pinNote()}</div>
 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>What kind of stop?</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { setCategory(c.id); setType(TYPES_BY_CATEGORY[c.id][0]); }}
+                style={{
+                  minHeight: 52, borderRadius: 14, cursor: 'pointer', padding: '0 14px',
+                  display: 'flex', alignItems: 'center', textAlign: 'left',
+                  background: category === c.id ? t.tagBg : t.card,
+                  border: `1.5px solid ${category === c.id ? t.accent : t.line}`,
+                  fontSize: 13.5, fontWeight: 700, color: t.text,
+                }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>Name or place</span>
           <input
@@ -176,7 +201,7 @@ export default function AddScreen({ t }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>What kind of place is it?</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {TYPES.map((ty) => (
+            {TYPES_BY_CATEGORY[category].map((ty) => (
               <Chip key={ty} label={ty} active={type === ty} t={t} onClick={() => setType(ty)} />
             ))}
           </div>
