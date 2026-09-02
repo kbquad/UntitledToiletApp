@@ -31,6 +31,9 @@ const toWashroom = (id, d) => ({
   id,
   name: d.name,
   type: d.type,
+  // Every washroom imported before this field existed is a toilet — this is
+  // the default that keeps them showing up exactly where they used to.
+  category: d.category || 'toilet',
   neighbourhood: d.area,
   lat: d.lat,
   lng: d.lng,
@@ -194,11 +197,14 @@ const remote = {
     });
   },
 
-  async suggestWashroom({ name, type, lat, lng, features }) {
+  async suggestWashroom({
+    name, type, lat, lng, features, category = 'toilet',
+  }) {
     const uid = await currentUserId();
     await setDoc(doc(firestore, 'washrooms', slugify(name)), {
       name,
       type,
+      category,
       area: nearestCity(lat, lng),
       lat,
       lng,

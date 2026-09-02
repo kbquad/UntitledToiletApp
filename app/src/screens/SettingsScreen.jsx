@@ -70,6 +70,10 @@ export default function SettingsScreen({ t }) {
   const forgetLocation = useStore((s) => s.forgetLocation);
   const displayName = useStore((s) => s.displayName);
   const setDisplayName = useStore((s) => s.setDisplayName);
+  const breaksOn = useStore((s) => s.breaksOn);
+  const toggleBreaks = useStore((s) => s.toggleBreaks);
+  const breakHours = useStore((s) => s.breakHours);
+  const setBreakHours = useStore((s) => s.setBreakHours);
   const here = useCurrentLocation();
 
   const [locating, setLocating] = useState(false);
@@ -203,6 +207,27 @@ export default function SettingsScreen({ t }) {
 
         <Section t={t} title="Distance units">
           <Pair t={t} a="Kilometres" b="Miles" value={units === 'Metric' ? 'Kilometres' : 'Miles'} onPick={(v) => setUnits(v === 'Kilometres' ? 'Metric' : 'Imperial')} />
+        </Section>
+
+        <Section t={t} title="Break reminders" note="Suggests a stop while you're driving, spaced by this interval.">
+          <Row t={t}>
+            <Label t={t} title="Remind me to take a break" hint={breaksOn ? `Every ${breakHours}h` : 'Off'} />
+            <Toggle on={breaksOn} onClick={toggleBreaks} t={t} />
+          </Row>
+          {breaksOn && (
+            <div style={{ padding: '13px 15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, color: t.text }}>Reminder interval</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: t.accent }}>{breakHours}h</span>
+              </div>
+              <input
+                type="range" min={1} max={4} step={0.5} value={breakHours}
+                onChange={(e) => setBreakHours(Number(e.target.value))}
+                style={{ width: '100%', accentColor: t.accent }}
+                aria-label="Break reminder interval"
+              />
+            </div>
+          )}
         </Section>
 
         <Section t={t} title="Notifications">

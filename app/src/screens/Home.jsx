@@ -15,6 +15,7 @@ export default function Home({ t }) {
   const toggleDark = useStore((s) => s.toggleDark);
   const radius = useStore((s) => s.radius);
   const units = useStore((s) => s.units);
+  const trips = useStore((s) => s.trips);
   const loadRegion = useDataStore((s) => s.loadRegion);
   const { allDecorated, nearby, location, status, error, loading } = useWashroomData();
 
@@ -113,8 +114,21 @@ export default function Home({ t }) {
                 </div>
               </button>
               <button type="button" onClick={() => navigate('/add')} style={actionCard(t)}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>Add a washroom</div>
-                <div style={{ fontSize: 11.5, color: t.sub, marginTop: 5, lineHeight: 1.4 }}>Takes about a minute</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>Add a stop</div>
+                <div style={{ fontSize: 11.5, color: t.sub, marginTop: 5, lineHeight: 1.4 }}>Toilet, food, fuel or rest area</div>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={() => navigate('/plan')} style={actionCard(t)}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>Plan a route</div>
+                <div style={{ fontSize: 11.5, color: t.sub, marginTop: 5, lineHeight: 1.4 }}>Real directions, drive preview</div>
+              </button>
+              <button type="button" onClick={() => navigate('/history')} style={actionCard(t)}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>Trip history</div>
+                <div style={{ fontSize: 11.5, color: t.sub, marginTop: 5, lineHeight: 1.4 }}>
+                  {trips.length ? `${trips.length} planned` : 'Routes you’ve planned'}
+                </div>
               </button>
             </div>
 

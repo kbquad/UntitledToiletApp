@@ -6,11 +6,19 @@ import { stars } from '../theme';
 import { relativeTime } from '../utils/time';
 import { DemoBanner } from '../components/Status';
 
+const TRAVEL_PRESETS = [
+  { id: 'family', label: 'Family', hint: 'Kids on board — changing tables, family rooms' },
+  { id: 'van', label: 'Van life', hint: 'Long hauls — showers, height-safe parking' },
+  { id: 'access', label: 'Accessible', hint: 'Step-free, wide doors, grab rails' },
+];
+
 export default function ProfileScreen({ t }) {
   const navigate = useNavigate();
   const displayName = useStore((s) => s.displayName);
   const dark = useStore((s) => s.dark);
   const toggleDark = useStore((s) => s.toggleDark);
+  const travelPreset = useStore((s) => s.travelPreset);
+  const setTravelPreset = useStore((s) => s.setTravelPreset);
   const myReviews = useDataStore((s) => s.myReviews);
   const myHelpfulReceived = useDataStore((s) => s.myHelpfulReceived);
   const loadProfile = useDataStore((s) => s.loadProfile);
@@ -63,6 +71,38 @@ export default function ProfileScreen({ t }) {
 
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <DemoBanner t={t} />
+
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.02em', color: t.text, marginBottom: 10 }}>How do you travel?</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {TRAVEL_PRESETS.map((p) => {
+                const active = travelPreset === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setTravelPreset(active ? null : p.id)}
+                    style={{
+                      width: '100%', minHeight: 62, padding: '13px 15px', borderRadius: 16, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      background: t.card, border: `1.5px solid ${active ? t.accent : t.line}`, textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{p.label}</span>
+                      <span style={{ fontSize: 11.5, color: t.sub }}>{p.hint}</span>
+                    </span>
+                    <span style={{
+                      width: 20, height: 20, flex: 'none', borderRadius: '50%',
+                      border: `2px solid ${active ? t.accent : t.line2}`,
+                      background: active ? t.accent : 'transparent',
+                    }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>Your reviews</div>
 

@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { useDataStore } from '../dataStore';
 import { useWashroomData, useCurrentLocation } from '../hooks/useWashroomData';
 import { formatDistance } from '../utils/geo';
+import { CATEGORIES } from '../data/locations';
 import { IconMap } from '../components/Icons';
 import { Chip } from '../components/ui';
 import { Loading, ErrorNote } from '../components/Status';
@@ -15,6 +16,8 @@ export default function ListScreen({ t }) {
   const setSort = useStore((s) => s.setSort);
   const units = useStore((s) => s.units);
   const radius = useStore((s) => s.radius);
+  const categoryFilter = useStore((s) => s.categoryFilter);
+  const setCategoryFilter = useStore((s) => s.setCategoryFilter);
   const loadRegion = useDataStore((s) => s.loadRegion);
   const { sorted, status, error, loading } = useWashroomData();
   const here = useCurrentLocation();
@@ -32,6 +35,12 @@ export default function ListScreen({ t }) {
           </button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14, overflowX: 'auto' }}>
+          <Chip label="All kinds" active={categoryFilter === 'all'} t={t} onClick={() => setCategoryFilter('all')} />
+          {CATEGORIES.map((c) => (
+            <Chip key={c.id} label={c.label} active={categoryFilter === c.id} t={t} onClick={() => setCategoryFilter(c.id)} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto' }}>
           {SORTS.map((label) => (
             <Chip key={label} label={label} active={sort === label} t={t} onClick={() => setSort(label)} />
           ))}
@@ -53,7 +62,12 @@ export default function ListScreen({ t }) {
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: '-.02em', color: t.text, lineHeight: 1.25 }}>{w.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: '-.02em', color: t.text, lineHeight: 1.25 }}>{w.name}</div>
+                  {w.category !== 'toilet' && (
+                    <span style={{ padding: '2px 7px', borderRadius: 7, fontSize: 9.5, fontWeight: 700, color: w.categoryColor, background: t.tagBg, whiteSpace: 'nowrap' }}>{w.categoryLabel}</span>
+                  )}
+                </div>
                 <div style={{ fontSize: 11.5, color: t.sub, marginTop: 4 }}>{w.metaLabel}</div>
               </div>
               <div style={{
@@ -84,7 +98,7 @@ export default function ListScreen({ t }) {
 
         {status === 'ready' && (
           <button type="button" onClick={() => navigate('/add')} style={{ padding: 16, borderRadius: 18, background: 'transparent', border: `1.5px dashed ${t.line2}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 500, color: t.ink }}>
-            Know one that’s missing? Add a washroom
+            Know one that’s missing? Add a stop
           </button>
         )}
       </div>

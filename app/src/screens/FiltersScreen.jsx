@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { useWashroomData } from '../hooks/useWashroomData';
 import { formatDistance } from '../utils/geo';
-import { FEATURES } from '../data/locations';
+import { FEATURES, CATEGORIES } from '../data/locations';
 import { Chip, ToggleTrack } from '../components/ui';
 
 const MIN_CLEAN_OPTIONS = [{ v: 0, l: 'Any' }, { v: 3, l: '3.0+' }, { v: 4, l: '4.0+' }, { v: 4.5, l: '4.5+' }];
@@ -14,6 +14,8 @@ export default function FiltersScreen({ t }) {
   const setRadius = useStore((s) => s.setRadius);
   const minClean = useStore((s) => s.minClean);
   const setMinClean = useStore((s) => s.setMinClean);
+  const categoryFilter = useStore((s) => s.categoryFilter);
+  const setCategoryFilter = useStore((s) => s.setCategoryFilter);
   const filters = useStore((s) => s.filters);
   const toggleFilter = useStore((s) => s.toggleFilter);
   const clearFilters = useStore((s) => s.clearFilters);
@@ -26,6 +28,16 @@ export default function FiltersScreen({ t }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-.03em', color: t.text }}>Filters</div>
           <button type="button" onClick={clearFilters} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: t.accent }}>Clear all</button>
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 11 }}>Kind of stop</div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+            <Chip label="All" active={categoryFilter === 'all'} t={t} onClick={() => setCategoryFilter('all')} />
+            {CATEGORIES.map((c) => (
+              <Chip key={c.id} label={c.label} active={categoryFilter === c.id} t={t} onClick={() => setCategoryFilter(c.id)} />
+            ))}
+          </div>
         </div>
 
         <div style={{ marginTop: 20 }}>
@@ -70,7 +82,7 @@ export default function FiltersScreen({ t }) {
         </div>
 
         <button type="button" onClick={() => navigate(-1)} style={{ width: '100%', height: 50, marginTop: 22, borderRadius: 15, border: 0, background: t.ink, color: t.onInk, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-          Show {mapPool.length} washroom{mapPool.length === 1 ? '' : 's'}
+          Show {mapPool.length} stop{mapPool.length === 1 ? '' : 's'}
         </button>
       </div>
     </div>

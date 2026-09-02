@@ -20,3 +20,13 @@ export const formatDistance = (m, units) => {
 export const formatWalk = (m) => (
   m > 8000 ? 'transit trip' : `${Math.max(1, Math.round(m / 80))} min walk`
 );
+
+// Seconds of driving time -> "3h 48m" / "42m", for route planning and the
+// drive simulation.
+export const formatDuration = (seconds) => {
+  const total = Math.max(0, Math.round(seconds / 60));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+};

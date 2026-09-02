@@ -201,7 +201,7 @@ export default function MapScreen({ t }) {
         >
           <IconTarget color={recentring ? t.sub : (following ? t.onInk : t.ink)} />
         </button>
-        <button type="button" aria-label="Add a washroom" onClick={() => navigate('/add')} style={{ width: 44, height: 44, borderRadius: 14, background: t.accent, border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
+        <button type="button" aria-label="Add a stop" onClick={() => navigate('/add')} style={{ width: 44, height: 44, borderRadius: 14, background: t.accent, border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
           <IconPlus />
         </button>
       </div>
@@ -212,7 +212,7 @@ export default function MapScreen({ t }) {
         </button>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '4px 18px 10px' }}>
           <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: '-.02em', color: t.text }}>
-            {mapPool.length} washroom{mapPool.length === 1 ? '' : 's'} around here
+            {mapPool.length} stop{mapPool.length === 1 ? '' : 's'} around here
           </div>
           <button type="button" onClick={() => navigate('/list')} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: t.ink }}>See all</button>
         </div>
